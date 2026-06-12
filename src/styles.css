@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+/* ───────────────────────────────────────────────────────────────
+   It's Your Turn — design tokens
+
+   Calm:        warm paper, low-contrast hairlines, soft motion.
+   Structural:  visible grid, mono numerals, microcap labels.
+   AI-native:   one accent voice per game; the "table reader"
+                narrates state in a serif aside.
+   ─────────────────────────────────────────────────────────────── */
+
+:root {
+  --paper: oklch(0.972 0.007 85);
+  --surface: oklch(0.992 0.003 85);
+  --ink: oklch(0.295 0.018 60);
+  --line: oklch(0.885 0.012 80);
+
+  /* Neutral accent before a game is chosen. */
+  --accent: oklch(0.52 0.045 60);
+  --accent-soft: oklch(0.93 0.016 60);
+}
+
+[data-game="flip7"] {
+  --accent: oklch(0.575 0.115 45); /* clay */
+  --accent-soft: oklch(0.935 0.03 50);
+}
+
+[data-game="phase10"] {
+  --accent: oklch(0.51 0.085 155); /* moss */
+  --accent-soft: oklch(0.93 0.028 155);
+}
+
+[data-game="spades"] {
+  --accent: oklch(0.45 0.055 275); /* slate */
+  --accent-soft: oklch(0.93 0.022 275);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Quiet number inputs: no spinners. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* Microcap label — the structural voice of the app. */
+.microcap {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: color-mix(in oklch, var(--ink) 55%, transparent);
+}
+
+/* Gentle fade for view transitions. */
+.fade-in {
+  animation: fade-in 360ms ease both;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

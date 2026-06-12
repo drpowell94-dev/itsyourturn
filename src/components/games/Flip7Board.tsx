@@ -1,0 +1,278 @@
+import { useEffect, useRef, useState } from "react";
+import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calculator } from "@/components/Calculator";
+import { Confetti } from "@/components/Confetti";
+import { Reader } from "@/components/Reader";
+import { flip7Reader } from "@/lib/reader";
+
+export type Flip7Player = {
+  id: string;
+  initials: string;
+  rounds: (number | null)[];
+  ownerId?: string | null;
+};
+
+type Props = {
+  players: Flip7Player[];
+  setPlayers: (updater: (p: Flip7Player[]) => Flip7Player[]) => void;
+  maxRound: number;
+  setMaxRound: (updater: (n: number) => number) => void;
+  targetScore: number;
+  setTargetScore: (n: number) => void;
+  canEdit: (p: Flip7Player) => boolean;
+  ownerIdForNew: string | null;
+  onWinner: (
+    winnerInitials: string | null,
+    playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
+  ) => void;
+  onNewGame: () => void;
+};
+
+const VISIBLE_ROUNDS = 3;
+
+export function Flip7Board({
+  players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
+  canEdit, ownerIdForNew, onWinner, onNewGame,
+}: Props) {
+  const [roundOffset, setRoundOffset] = useState(0);
+
+  const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
+  const sorted = [...players].sort((a, b) => total(b) - total(a));
+  const winner = sorted.length > 0 && total(sorted[0]) >= targetScore ? sorted[0] : null;
+
+  const savedWinnerRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (winner && savedWinnerRef.current !== winner.id) {
+      savedWinnerRef.current = winner.id;
+      onWinner(
+        winner.initials || "???",
+        sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+      );
+    }
+    if (!winner) savedWinnerRef.current = null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winner?.id]);
+
+  const addPlayer = () =>
+    setPlayers((p) => [
+      ...p,
+      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
+    ]);
+
+  const removePlayer = (id: string) =>
+    setPlayers((p) => {
+      const t = p.find((x) => x.id === id);
+      if (t && !canEdit(t)) return p;
+      return p.filter((x) => x.id !== id);
+    });
+
+  const updateInitials = (id: string, v: string) => {
+    const t = players.find((x) => x.id === id);
+    if (t && !canEdit(t)) return;
+    setPlayers((p) => p.map((x) => (x.id === id ? { ...x, initials: v.toUpperCase().slice(0, 3) } : x)));
+  };
+
+  const updateScore = (id: string, round: number, v: string) => {
+    const t = players.find((x) => x.id === id);
+    if (t && !canEdit(t)) return;
+    if (v.includes("-")) return;
+    const num = v === "" ? null : parseInt(v, 10);
+    if (v !== "" && Number.isNaN(num as number)) return;
+    setPlayers((p) =>
+      p.map((x) => {
+        if (x.id !== id) return x;
+        const rounds = [...x.rounds];
+        while (rounds.length <= round) rounds.push(null);
+        rounds[round] = num;
+        return { ...x, rounds };
+      }),
+    );
+  };
+
+  const addScoreToPlayer = (id: string, value: number) => {
+    const t = players.find((x) => x.id === id);
+    if (t && !canEdit(t)) return;
+    let grewTo = 0;
+    setPlayers((p) =>
+      p.map((x) => {
+        if (x.id !== id) return x;
+        const rounds = [...x.rounds];
+        const idx = rounds.findIndex((r) => r === null);
+        if (idx === -1) { rounds.push(value); grewTo = rounds.length; }
+        else { rounds[idx] = value; }
+        return { ...x, rounds };
+      }),
+    );
+    if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
+  };
+
+  const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
+  const canPrev = roundOffset > 0;
+  const goNext = () => {
+    const newOffset = roundOffset + 1;
+    if (newOffset + VISIBLE_ROUNDS > maxRound) setMaxRound(() => newOffset + VISIBLE_ROUNDS);
+    setRoundOffset(newOffset);
+  };
+
+  // "Current hand" = first round where no player has a score yet.
+  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  let currentRound = 0;
+  while (handIsPlayed(currentRound)) currentRound++;
+  let playedHandsCount = 0;
+  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
+
+  const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
+  const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
+
+  return (
+    <>
+      <section className="bg-surface border border-line rounded-xl overflow-hidden">
+        {/* Status bar */}
+        <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
+          <div className="flex items-center gap-4">
+            <span className="microcap">
+              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+            </span>
+            <span className="microcap">Played {playedHandsCount}</span>
+          </div>
+          <label className="microcap flex items-center gap-1.5">
+            To
+            <input
+              type="number"
+              value={targetScore}
+              onChange={(e) => {
+                const v = e.target.value;
+                setTargetScore(v === "" ? 0 : parseInt(v, 10) || 0);
+              }}
+              aria-label="Target score"
+              className="w-14 text-center font-mono text-sm text-accent bg-transparent border-b border-line focus:border-accent outline-none py-0.5 transition-colors"
+            />
+          </label>
+        </div>
+
+        {winner && winner.initials && (
+          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+            <span className="font-display italic text-base">
+              {winner.initials} takes it with {total(winner)}.
+            </span>
+          </div>
+        )}
+
+        {/* Column header */}
+        <div className={`${rowGrid} px-3 sm:px-4 py-2 border-b border-line`}>
+          <span className="microcap">Player</span>
+          <span className="microcap text-right">Total</span>
+          <div className={roundsGrid}>
+            <button
+              onClick={() => canPrev && setRoundOffset(roundOffset - 1)}
+              disabled={!canPrev}
+              aria-label="Earlier rounds"
+              className="text-ink/40 hover:text-accent disabled:opacity-25 flex justify-center transition-colors"
+            >
+              <ChevronLeft size={15} />
+            </button>
+            {visibleRounds.map((r) => (
+              <span key={r} className="microcap text-center">R{r + 1}</span>
+            ))}
+            <button
+              onClick={goNext}
+              aria-label="Later rounds"
+              className="text-ink/40 hover:text-accent flex justify-center transition-colors"
+            >
+              <ChevronRight size={15} />
+            </button>
+          </div>
+          <span />
+        </div>
+
+        {players.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[200px] px-6">
+            <p className="font-display italic text-lg text-ink/45 text-center">
+              An empty sheet. Add a player below to begin.
+            </p>
+          </div>
+        ) : (
+          <div>
+            {sorted.map((pl, idx) => {
+              const isWinner = winner?.id === pl.id;
+              const leading = idx === 0 && total(pl) > 0;
+              return (
+                <div
+                  key={pl.id}
+                  className={`${rowGrid} px-3 sm:px-4 py-2.5 border-b border-line last:border-b-0 transition-colors ${
+                    isWinner ? "bg-accent-soft" : ""
+                  }`}
+                >
+                  <input
+                    value={pl.initials}
+                    onChange={(e) => updateInitials(pl.id, e.target.value)}
+                    placeholder="···"
+                    maxLength={3}
+                    readOnly={!canEdit(pl)}
+                    aria-label="Player initials"
+                    className="w-full min-w-0 font-mono font-semibold tracking-[0.15em] text-sm sm:text-base text-ink uppercase bg-transparent border-b border-line focus:border-accent outline-none text-center py-1.5 placeholder:text-ink/25 transition-colors"
+                  />
+                  <span
+                    className={`text-right font-mono font-semibold tabular-nums text-base sm:text-lg ${
+                      leading || isWinner ? "text-accent" : "text-ink"
+                    }`}
+                  >
+                    {total(pl)}
+                  </span>
+                  <div className={roundsGrid}>
+                    <span />
+                    {visibleRounds.map((r) => (
+                      <input
+                        key={r}
+                        type="text"
+                        inputMode="numeric"
+                        value={pl.rounds[r] ?? ""}
+                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                        readOnly={!canEdit(pl)}
+                        placeholder="–"
+                        aria-label={`Round ${r + 1} score`}
+                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-transparent border-b border-line focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
+                      />
+                    ))}
+                    <span />
+                  </div>
+                  <button
+                    onClick={() => removePlayer(pl.id)}
+                    disabled={!canEdit(pl)}
+                    aria-label="Remove player"
+                    className="flex justify-center items-center h-9 text-ink/30 hover:text-red-800/80 disabled:opacity-20 transition-colors"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <Reader text={flip7Reader(players.map((p) => ({ initials: p.initials, total: total(p) })), targetScore)} />
+
+      <div className="grid grid-cols-2 gap-2 mt-5">
+        <button
+          onClick={onNewGame}
+          className="py-2.5 rounded-lg border border-line bg-surface text-sm text-ink/80 hover:border-accent hover:text-accent transition-colors"
+        >
+          New round
+        </button>
+        <button
+          onClick={addPlayer}
+          className="py-2.5 rounded-lg bg-accent text-paper text-sm font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+        >
+          <Plus size={15} /> Add player
+        </button>
+      </div>
+
+      <Calculator
+        players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
+        onAssign={addScoreToPlayer}
+      />
+      <Confetti active={!!winner} />
+    </>
+  );
+}
