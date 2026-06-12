@@ -1,8 +1,8 @@
 # It's Your Turn
 
-A calm, shared score sheet for game night. Pick a game, host a table, share a
-4-digit PIN, and everyone's phone follows along on one live sheet. Supports
-**Flip 7**, **Phase 10**, and **Spades**.
+Game night's live scorekeeper. Pick a game, host a table, share a 4-digit PIN,
+and every phone at the table keeps score together — hand by hand, in real
+time. Supports **Flip 7**, **Phase 10**, and **Spades**.
 
 ## Design language
 
