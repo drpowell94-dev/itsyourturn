@@ -64,13 +64,13 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             <div className="absolute left-0 top-0 h-11 w-11 rounded-xl border-4 border-gold bg-surface -rotate-12" />
             <div className="absolute left-5 top-3 h-11 w-11 rounded-xl border-4 border-teal bg-surface rotate-6" />
           </div>
-          <div className="microcap mb-2">Game night · Shared score sheet</div>
+          <div className="microcap mb-2">Game night · Live score sheet</div>
           <h1 className="font-display font-bold text-5xl sm:text-6xl tracking-tight leading-none mb-3">
             It&rsquo;s your turn!
           </h1>
           <p className="text-ink/65 text-[15px] leading-relaxed max-w-md mx-auto">
-            Pick a game, host the table, and everyone&rsquo;s phone follows along on one
-            shared sheet.
+            Pick a game, rally the table, and watch every phone keep score together —
+            live, hand by hand.
           </p>
         </header>
 

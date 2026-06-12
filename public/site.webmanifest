@@ -1,7 +1,7 @@
 {
   "name": "It's Your Turn",
   "short_name": "Your Turn",
-  "description": "A calm, shared score sheet for game night — Flip 7, Phase 10, and Spades.",
+  "description": "Game night's live scorekeeper! Flip 7, Phase 10, and Spades — every phone at the table keeps score together.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
