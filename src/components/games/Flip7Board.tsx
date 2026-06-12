@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
+import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { flip7Reader } from "@/lib/reader";
@@ -137,14 +138,9 @@ export function Flip7Board({
           </div>
           <label className="microcap flex items-center gap-1.5">
             To
-            <input
-              type="number"
+            <TargetInput
               value={targetScore}
-              onChange={(e) => {
-                const v = e.target.value;
-                setTargetScore(v === "" ? 0 : parseInt(v, 10) || 0);
-              }}
-              aria-label="Target score"
+              onCommit={setTargetScore}
               className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
             />
           </label>
@@ -228,6 +224,7 @@ export function Flip7Board({
                         inputMode="numeric"
                         value={pl.rounds[r] ?? ""}
                         onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                        onFocus={selectOnFocus}
                         readOnly={!canEdit(pl)}
                         placeholder="–"
                         aria-label={`Round ${r + 1} score`}

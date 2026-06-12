@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Minus, Plus } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
+import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { spadesReader } from "@/lib/reader";
 
@@ -296,14 +297,9 @@ export function SpadesBoard({
           </div>
           <label className="microcap flex items-center gap-1.5">
             To
-            <input
-              type="number"
+            <TargetInput
               value={targetScore}
-              onChange={(e) => {
-                const v = e.target.value;
-                setTargetScore(v === "" ? 0 : parseInt(v, 10) || 0);
-              }}
-              aria-label="Target score"
+              onCommit={setTargetScore}
               className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
             />
           </label>
@@ -485,6 +481,7 @@ function Stepper({
           inputMode="numeric"
           value={value ?? ""}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={selectOnFocus}
           readOnly={disabled}
           aria-label={label}
           placeholder="–"

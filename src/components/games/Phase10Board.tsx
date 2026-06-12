@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { Confetti } from "@/components/Confetti";
+import { selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { phase10Reader } from "@/lib/reader";
 
@@ -249,6 +250,7 @@ export function Phase10Board({
                         inputMode="numeric"
                         value={pl.rounds[r] ?? ""}
                         onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                        onFocus={selectOnFocus}
                         readOnly={!canEdit(pl)}
                         placeholder="–"
                         aria-label={`Round ${r + 1} score`}
