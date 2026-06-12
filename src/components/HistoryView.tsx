@@ -79,9 +79,9 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
 
   if (rows.length === 0) {
     return (
-      <div className="flex items-center justify-center min-h-[180px] border border-line rounded-xl bg-surface">
-        <p className="font-display italic text-lg text-ink/45 text-center px-6">
-          Nothing on the record yet. Finished games land here.
+      <div className="card-pop flex items-center justify-center min-h-[180px]">
+        <p className="font-display font-semibold text-lg text-ink/50 text-center px-6">
+          Nothing on the record yet — finished games land here!
         </p>
       </div>
     );
@@ -93,7 +93,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
         <div className="flex justify-end mb-3">
           <button
             onClick={onClear}
-            className="text-xs text-ink/50 underline underline-offset-4 decoration-line hover:text-red-800/80 hover:decoration-current transition-colors"
+            className="text-xs font-bold text-ink/50 underline underline-offset-4 decoration-2 decoration-line hover:text-coral hover:decoration-current transition-colors"
           >
             Clear history
           </button>
@@ -114,9 +114,9 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
               <span className="microcap">Target {g.targetScore}</span>
             </div>
             {g.winner && (
-              <p className="font-display italic text-base mb-2">
-                <span className="text-accent mr-1.5">✳</span>
-                {g.winner} took the game.
+              <p className="font-display font-bold text-base mb-2">
+                <span className="mr-1.5">🏆</span>
+                {g.winner} took the game!
               </p>
             )}
             <div className="flex flex-wrap gap-x-5 gap-y-1">

@@ -289,7 +289,7 @@ export default function App() {
           <div className="microcap mb-3">
             {pin ? `Tonight · Table ${pin}` : "On this device"}
           </div>
-          <h1 className="font-display italic text-4xl tracking-tight mb-8">Past games.</h1>
+          <h1 className="font-display font-bold text-4xl tracking-tight mb-8">Past games</h1>
           <HistoryView sessionId={pin ?? undefined} showClear={!pin} />
         </div>
       </div>
@@ -311,7 +311,7 @@ export default function App() {
   if (pin && !gameType) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center px-5">
-        <p className="font-display italic text-xl text-ink/55 fade-in">
+        <p className="font-display font-semibold text-xl text-ink/55 fade-in">
           Pulling up a chair at table {pin}…
         </p>
       </div>
@@ -331,8 +331,8 @@ export default function App() {
             <div className="microcap mb-1.5">
               It&rsquo;s your turn · <span className="text-accent">{GAME_LABELS[gameType!]}</span>
             </div>
-            <h1 className="font-display italic text-4xl sm:text-[44px] leading-none tracking-tight">
-              {GAME_LABELS[gameType!]}.
+            <h1 className="font-display font-bold text-4xl sm:text-[44px] leading-none tracking-tight">
+              {GAME_LABELS[gameType!]}
             </h1>
             {!pin && (
               <button
@@ -346,7 +346,7 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2">
             {pin ? (
-              <div className="flex items-center gap-2 border border-line bg-surface rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
                 <span className="microcap">Table</span>
                 <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
                   {pin}
@@ -362,7 +362,7 @@ export default function App() {
                 <button
                   onClick={leaveGame}
                   aria-label="Leave table"
-                  className="text-ink/40 hover:text-red-800/80 transition-colors"
+                  className="text-ink/40 hover:text-coral transition-colors"
                 >
                   <LogOut size={14} />
                 </button>
@@ -370,14 +370,14 @@ export default function App() {
             ) : (
               <button
                 onClick={() => createGame(gameType!)}
-                className="px-4 py-2 rounded-lg bg-accent text-paper text-sm font-medium hover:opacity-90 transition-opacity"
+                className="btn btn-accent px-4 py-2 text-sm"
               >
                 Host a table
               </button>
             )}
             <button
               onClick={() => setShowArchive(true)}
-              className="px-3.5 py-2 rounded-lg border border-line bg-surface text-sm text-ink/75 hover:border-accent hover:text-accent transition-colors"
+              className="btn btn-white px-3.5 py-2 text-sm"
             >
               Tonight
             </button>
@@ -391,7 +391,7 @@ export default function App() {
           </p>
         )}
         {createError && (
-          <p className="-mt-2 mb-5 text-sm text-red-800/80">
+          <p className="-mt-2 mb-5 text-sm font-semibold text-coral">
             Couldn&rsquo;t create a table just now — try again in a moment.
           </p>
         )}
@@ -439,11 +439,11 @@ export default function App() {
       {/* Claim a seat */}
       {showClaim && pin && (
         <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-surface rounded-xl border border-line p-5 shadow-xl fade-in">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
             <div className="microcap mb-1">
               Table {pin} · {GAME_LABELS[gameType!]}
             </div>
-            <h2 className="font-display italic text-2xl mb-4">Who are you tonight?</h2>
+            <h2 className="font-display font-bold text-2xl mb-4">Who are you tonight?</h2>
             {players.length === 0 ? (
               <p className="text-sm text-ink/60 mb-4">
                 No one at the table yet — add yourself below.
@@ -470,7 +470,7 @@ export default function App() {
             )}
             <button
               onClick={addPlayerFromClaim}
-              className="w-full py-2.5 rounded-lg bg-accent text-paper text-sm font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5"
             >
               <Plus size={15} /> I&rsquo;m new here
             </button>

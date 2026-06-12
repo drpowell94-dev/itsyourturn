@@ -132,7 +132,7 @@ export function Phase10Board({
 
   return (
     <>
-      <section className="bg-surface border border-line rounded-xl overflow-hidden">
+      <section className="card-pop overflow-hidden">
         {/* Status bar */}
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
@@ -146,8 +146,8 @@ export function Phase10Board({
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
-            <span className="font-display italic text-base">
-              {winner.initials} clears phase 10 at {total(winner)} points.
+            <span className="font-display font-bold text-base">
+              🏆 {winner.initials} clears phase 10 at {total(winner)} points!
             </span>
           </div>
         )}
@@ -182,8 +182,8 @@ export function Phase10Board({
 
         {players.length === 0 ? (
           <div className="flex items-center justify-center min-h-[200px] px-6">
-            <p className="font-display italic text-lg text-ink/45 text-center">
-              An empty sheet. Add a player below to begin.
+            <p className="font-display font-semibold text-lg text-ink/50 text-center">
+              A fresh sheet! Add a player below to get going.
             </p>
           </div>
         ) : (
@@ -206,14 +206,14 @@ export function Phase10Board({
                     maxLength={3}
                     readOnly={!canEdit(pl)}
                     aria-label="Player initials"
-                    className="w-full min-w-0 font-mono font-semibold tracking-[0.15em] text-sm sm:text-base text-ink uppercase bg-transparent border-b border-line focus:border-accent outline-none text-center py-1.5 placeholder:text-ink/25 transition-colors"
+                    className="w-full min-w-0 font-mono font-semibold tracking-[0.15em] text-sm sm:text-base text-ink uppercase bg-paper border-2 border-line rounded-lg focus:border-accent outline-none text-center py-1.5 placeholder:text-ink/25 transition-colors"
                   />
                   <div className="flex items-center justify-center gap-0.5">
                     <button
                       onClick={() => bumpPhase(pl.id, -1)}
                       disabled={!canEdit(pl) || ph <= 1}
                       aria-label="Previous phase"
-                      className="w-6 h-8 rounded text-ink/45 hover:text-accent hover:bg-accent-soft disabled:opacity-25 font-mono text-sm transition-colors"
+                      className="w-6 h-8 rounded-lg bg-accent-soft text-accent font-bold disabled:opacity-25 text-sm hover:brightness-95 transition-all"
                     >
                       −
                     </button>
@@ -228,7 +228,7 @@ export function Phase10Board({
                       onClick={() => bumpPhase(pl.id, 1)}
                       disabled={!canEdit(pl) || ph >= 11}
                       aria-label="Next phase"
-                      className="w-6 h-8 rounded text-ink/45 hover:text-accent hover:bg-accent-soft disabled:opacity-25 font-mono text-sm transition-colors"
+                      className="w-6 h-8 rounded-lg bg-accent-soft text-accent font-bold disabled:opacity-25 text-sm hover:brightness-95 transition-all"
                     >
                       +
                     </button>
@@ -252,7 +252,7 @@ export function Phase10Board({
                         readOnly={!canEdit(pl)}
                         placeholder="–"
                         aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-transparent border-b border-line focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
+                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
                       />
                     ))}
                     <span />
@@ -261,7 +261,7 @@ export function Phase10Board({
                     onClick={() => removePlayer(pl.id)}
                     disabled={!canEdit(pl)}
                     aria-label="Remove player"
-                    className="flex justify-center items-center h-9 text-ink/30 hover:text-red-800/80 disabled:opacity-20 transition-colors"
+                    className="flex justify-center items-center h-9 text-ink/30 hover:text-coral disabled:opacity-20 transition-colors"
                   >
                     <X size={15} />
                   </button>
@@ -279,15 +279,12 @@ export function Phase10Board({
       />
 
       <div className="grid grid-cols-2 gap-2 mt-5">
-        <button
-          onClick={onNewGame}
-          className="py-2.5 rounded-lg border border-line bg-surface text-sm text-ink/80 hover:border-accent hover:text-accent transition-colors"
-        >
+        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
           New round
         </button>
         <button
           onClick={addPlayer}
-          className="py-2.5 rounded-lg bg-accent text-paper text-sm font-medium flex items-center justify-center gap-1.5 hover:opacity-90 transition-opacity"
+          className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
           <Plus size={15} /> Add player
         </button>

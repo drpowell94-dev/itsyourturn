@@ -6,14 +6,15 @@ A calm, shared score sheet for game night. Pick a game, host a table, share a
 
 ## Design language
 
-The app is built around three ideas:
+A playful game-night theme that stays easy to read and tap:
 
-- **Calm** — warm paper background, ink text, hairline borders, soft motion.
-  No felt, no gold, no shouting. The winner gets a quiet serif sentence and a
-  brief drift of muted confetti.
-- **Structural** — everything sits on a visible grid: microcap mono labels,
-  hairline rules, tabular mono numerals. The score sheet looks like a score
-  sheet.
+- **Playful** — a cream tabletop with card-suit colors (gold, teal, coral,
+  plum), chunky rounded display type (Baloo 2), and buttons that press down
+  like game pieces. Each game has its own accent: marigold for Flip 7, teal
+  for Phase 10, plum for Spades.
+- **Readable** — dark ink text on light surfaces, a real score-sheet grid,
+  tabular mono numerals, and big touch targets for phones being passed
+  around a table.
 - **AI-native** — a "table reader" narrates the state of the game beneath the
   board in plain language ("KAT leads JM by 12 and needs 58 more to reach
   200."). It's deterministic and instant — no API call, no latency, no

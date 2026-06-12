@@ -216,8 +216,8 @@ export function SpadesBoard({
 
     return (
       <div
-        className={`rounded-xl border p-3.5 sm:p-4 transition-colors ${
-          isWinner ? "bg-accent-soft border-accent/40" : "bg-surface border-line"
+        className={`rounded-xl border-2 p-3.5 sm:p-4 transition-colors ${
+          isWinner ? "bg-accent-soft border-accent/50" : "bg-paper border-line"
         }`}
       >
         <div className="flex items-end justify-between gap-3 mb-3">
@@ -230,7 +230,7 @@ export function SpadesBoard({
               maxLength={6}
               readOnly={!editable}
               aria-label="Team name"
-              className="w-full font-display text-2xl sm:text-[26px] tracking-wide text-ink bg-transparent border-b border-transparent focus:border-accent outline-none py-0.5 placeholder:text-ink/25 transition-colors"
+              className="w-full font-display font-bold text-2xl sm:text-[26px] tracking-wide text-ink bg-transparent border-b-2 border-transparent focus:border-accent outline-none py-0.5 placeholder:text-ink/25 transition-colors"
             />
           </div>
           <div className="text-right">
@@ -273,7 +273,7 @@ export function SpadesBoard({
                 ? "text-ink/30"
                 : projected >= 0
                   ? "text-ink"
-                  : "text-red-800/80"
+                  : "text-coral"
             }`}
           >
             {projected === null ? "—" : projected > 0 ? `+${projected}` : projected}
@@ -285,7 +285,7 @@ export function SpadesBoard({
 
   return (
     <>
-      <section className="bg-surface border border-line rounded-xl overflow-hidden">
+      <section className="card-pop overflow-hidden">
         {/* Status bar */}
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
@@ -304,15 +304,15 @@ export function SpadesBoard({
                 setTargetScore(v === "" ? 0 : parseInt(v, 10) || 0);
               }}
               aria-label="Target score"
-              className="w-14 text-center font-mono text-sm text-accent bg-transparent border-b border-line focus:border-accent outline-none py-0.5 transition-colors"
+              className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
             />
           </label>
         </div>
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
-            <span className="font-display italic text-base">
-              {winner.initials} takes the match at {total(winner)}.
+            <span className="font-display font-bold text-base">
+              🏆 {winner.initials} takes the match at {total(winner)}!
             </span>
           </div>
         )}
@@ -320,7 +320,7 @@ export function SpadesBoard({
         {/* Two team panels */}
         {players.length !== 2 ? (
           <div className="flex items-center justify-center h-[220px]">
-            <p className="font-display italic text-lg text-ink/45">Setting up the two teams…</p>
+            <p className="font-display font-semibold text-lg text-ink/50">Setting up the two teams…</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 p-2.5 sm:p-3">
@@ -339,7 +339,7 @@ export function SpadesBoard({
                   trickSum === TRICKS_PER_HAND
                     ? "text-accent"
                     : trickSumOver
-                      ? "text-red-800/90"
+                      ? "text-coral"
                       : "text-ink/70"
                 }`}
               >
@@ -378,7 +378,7 @@ export function SpadesBoard({
       />
 
       {/* Hand-by-hand log */}
-      <section className="mt-5 bg-surface border border-line rounded-xl p-3 sm:p-4">
+      <section className="card-pop mt-5 p-3 sm:p-4">
         <div className="flex items-center justify-between mb-2.5">
           <span className="microcap">Score sheet</span>
           <div className="flex items-center gap-1">
@@ -414,19 +414,19 @@ export function SpadesBoard({
               return (
                 <div
                   key={r}
-                  className="shrink-0 w-24 rounded-lg border border-line p-2 text-center"
+                  className="shrink-0 w-24 rounded-xl border-2 border-line bg-paper p-2 text-center"
                 >
                   <div className="microcap">Hand {r + 1}</div>
                   <div className="mt-1.5 grid grid-cols-2 gap-1 font-mono tabular-nums text-xs font-semibold">
                     <span
                       title={`${a.initials} bid ${a.bids?.[r]} took ${a.tricks?.[r]}`}
-                      className={aScore >= 0 ? "text-ink" : "text-red-800/80"}
+                      className={aScore >= 0 ? "text-ink" : "text-coral"}
                     >
                       {aScore > 0 ? `+${aScore}` : aScore}
                     </span>
                     <span
                       title={`${b.initials} bid ${b.bids?.[r]} took ${b.tricks?.[r]}`}
-                      className={bScore >= 0 ? "text-ink" : "text-red-800/80"}
+                      className={bScore >= 0 ? "text-ink" : "text-coral"}
                     >
                       {bScore > 0 ? `+${bScore}` : bScore}
                     </span>
@@ -442,10 +442,7 @@ export function SpadesBoard({
       </section>
 
       <div className="mt-5">
-        <button
-          onClick={onNewGame}
-          className="w-full py-2.5 rounded-lg border border-line bg-surface text-sm text-ink/80 hover:border-accent hover:text-accent transition-colors"
-        >
+        <button onClick={onNewGame} className="btn btn-white w-full py-2.5 text-sm">
           New game
         </button>
       </div>
@@ -468,8 +465,8 @@ function Stepper({
 }) {
   return (
     <div
-      className={`rounded-lg border p-2 transition-colors ${
-        warn ? "border-red-700/50" : "border-line"
+      className={`rounded-xl border-2 bg-surface p-2 transition-colors ${
+        warn ? "border-coral" : "border-line"
       }`}
     >
       <div className="microcap text-center">{label}</div>
@@ -479,7 +476,7 @@ function Stepper({
           onClick={onDec}
           disabled={disabled}
           aria-label={`Decrease ${label.toLowerCase()}`}
-          className="shrink-0 h-9 w-9 rounded-md border border-line text-ink/60 hover:border-accent hover:text-accent flex items-center justify-center disabled:opacity-25 active:scale-95 transition-all"
+          className="shrink-0 h-9 w-9 rounded-lg border-2 border-line bg-paper text-ink/60 hover:border-accent hover:text-accent flex items-center justify-center disabled:opacity-25 active:scale-95 transition-all"
         >
           <Minus size={14} />
         </button>
@@ -498,7 +495,7 @@ function Stepper({
           onClick={onInc}
           disabled={disabled}
           aria-label={`Increase ${label.toLowerCase()}`}
-          className="shrink-0 h-9 w-9 rounded-md border border-line text-ink/60 hover:border-accent hover:text-accent flex items-center justify-center disabled:opacity-25 active:scale-95 transition-all"
+          className="shrink-0 h-9 w-9 rounded-lg border-2 border-line bg-paper text-ink/60 hover:border-accent hover:text-accent flex items-center justify-center disabled:opacity-25 active:scale-95 transition-all"
         >
           <Plus size={14} />
         </button>

@@ -1,38 +1,46 @@
 @import "tailwindcss";
 
 /* ───────────────────────────────────────────────────────────────
-   It's Your Turn — design tokens
+   It's Your Turn — game night theme
 
-   Calm:        warm paper, low-contrast hairlines, soft motion.
-   Structural:  visible grid, mono numerals, microcap labels.
-   AI-native:   one accent voice per game; the "table reader"
-                narrates state in a serif aside.
+   Playful:     cream tabletop, card-suit colors (gold, teal,
+                coral, plum), chunky rounded type, buttons that
+                press like game pieces.
+   Readable:    dark ink text, real grid lines, tabular numerals,
+                big touch targets.
+   AI-native:   the "table reader" narrates the game beneath the
+                board in one friendly voice.
    ─────────────────────────────────────────────────────────────── */
 
 :root {
-  --paper: oklch(0.972 0.007 85);
-  --surface: oklch(0.992 0.003 85);
-  --ink: oklch(0.295 0.018 60);
-  --line: oklch(0.885 0.012 80);
+  --paper: oklch(0.958 0.032 90); /* cream tabletop */
+  --surface: oklch(0.995 0.006 95);
+  --ink: oklch(0.33 0.042 235); /* deep slate-teal ink */
+  --line: oklch(0.875 0.04 85); /* warm sand hairline */
 
-  /* Neutral accent before a game is chosen. */
-  --accent: oklch(0.52 0.045 60);
-  --accent-soft: oklch(0.93 0.016 60);
+  /* The deck: text-safe suit colors used across the app. */
+  --gold: oklch(0.66 0.13 70);
+  --teal: oklch(0.56 0.1 180);
+  --coral: oklch(0.6 0.155 35);
+  --plum: oklch(0.52 0.135 310);
+
+  --accent: var(--teal);
+  --accent-soft: oklch(0.93 0.045 180);
 }
 
 [data-game="flip7"] {
-  --accent: oklch(0.575 0.115 45); /* clay */
-  --accent-soft: oklch(0.935 0.03 50);
+  --accent: oklch(0.63 0.14 60); /* marigold */
+  --accent-soft: oklch(0.94 0.05 80);
 }
 
 [data-game="phase10"] {
-  --accent: oklch(0.51 0.085 155); /* moss */
-  --accent-soft: oklch(0.93 0.028 155);
+  --accent: var(--teal);
+  --accent-soft: oklch(0.93 0.045 180);
 }
 
 [data-game="spades"] {
-  --accent: oklch(0.45 0.055 275); /* slate */
-  --accent-soft: oklch(0.93 0.022 275);
+  --accent: var(--plum);
+  --accent-soft: oklch(0.94 0.04 310);
 }
 
 @theme inline {
@@ -42,9 +50,13 @@
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-teal: var(--teal);
+  --color-coral: var(--coral);
+  --color-plum: var(--plum);
 
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Baloo 2", "Nunito", ui-rounded, system-ui, sans-serif;
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
 
@@ -71,12 +83,49 @@ input[type="number"] {
 
 /* Microcap label — the structural voice of the app. */
 .microcap {
-  font-family: var(--font-mono);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.18em;
+  font-family: var(--font-display);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: color-mix(in oklch, var(--ink) 55%, transparent);
+  color: color-mix(in oklch, var(--ink) 60%, transparent);
+}
+
+/* Game-piece buttons: chunky border + press shadow. */
+.btn {
+  font-family: var(--font-display);
+  font-weight: 700;
+  border: 2px solid var(--ink);
+  border-radius: 0.875rem;
+  box-shadow: 0 3px 0 var(--ink);
+  transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+}
+.btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 0 var(--ink);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.4;
+}
+.btn-accent {
+  background: var(--accent);
+  color: white;
+}
+.btn-white {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* Card surfaces sit slightly off the table. */
+.card-pop {
+  background: var(--surface);
+  border: 2px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: 0 4px 0 var(--line);
 }
 
 /* Gentle fade for view transitions. */

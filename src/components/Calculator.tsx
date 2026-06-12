@@ -46,7 +46,7 @@ export function Calculator({ players, onAssign }: Props) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Open hand calculator"
-        className="fixed bottom-5 right-5 z-40 bg-accent text-paper rounded-full shadow-lg w-13 h-13 p-3.5 flex items-center justify-center hover:scale-105 transition-transform"
+        className="btn btn-accent fixed bottom-5 right-5 z-40 rounded-full! w-13 h-13 p-3.5 flex items-center justify-center"
       >
         <CalcIcon size={22} />
       </button>
@@ -55,10 +55,10 @@ export function Calculator({ players, onAssign }: Props) {
 
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const keyCls =
-    "py-2.5 rounded-md border border-line bg-paper font-mono text-sm text-ink hover:border-accent hover:text-accent transition-colors";
+    "py-2.5 rounded-xl border-2 border-line bg-paper font-display font-bold text-sm text-ink hover:border-accent hover:text-accent active:scale-95 transition-all";
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 w-72 bg-surface rounded-xl border border-line shadow-xl p-3.5 fade-in">
+    <div className="fixed bottom-5 right-5 z-40 w-72 bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-3.5 fade-in">
       <div className="flex items-center justify-between mb-3">
         <span className="microcap">Hand calculator</span>
         <button
@@ -70,9 +70,9 @@ export function Calculator({ players, onAssign }: Props) {
         </button>
       </div>
 
-      <div className="border border-line rounded-lg px-3 py-2.5 mb-3 flex items-baseline justify-between">
+      <div className="bg-accent-soft border-2 border-line rounded-xl px-3 py-2.5 mb-3 flex items-baseline justify-between">
         <span className="microcap">This hand</span>
-        <span className="font-mono font-semibold tabular-nums text-3xl text-accent leading-none">
+        <span className="font-mono font-bold tabular-nums text-3xl text-accent leading-none">
           {total}
         </span>
       </div>
@@ -93,7 +93,7 @@ export function Calculator({ players, onAssign }: Props) {
           onClick={assign}
           disabled={!target || total === 0}
           aria-label="Commit score"
-          className="py-2.5 rounded-md bg-accent text-paper font-mono text-sm disabled:opacity-35 transition-opacity"
+          className="py-2.5 rounded-xl bg-accent text-white font-display font-bold text-sm disabled:opacity-35 active:scale-95 transition-all"
         >
           =
         </button>
@@ -109,7 +109,7 @@ export function Calculator({ players, onAssign }: Props) {
         value={target}
         onChange={(e) => setTarget(e.target.value)}
         aria-label="Assign to player"
-        className="w-full bg-paper text-ink font-mono text-sm rounded-md border border-line py-2.5 px-2 mb-2 outline-none focus:border-accent transition-colors"
+        className="w-full bg-paper text-ink font-display font-bold text-sm rounded-xl border-2 border-line py-2.5 px-2 mb-2.5 outline-none focus:border-accent transition-colors"
       >
         <option value="">Select player…</option>
         {players.map((p) => (
@@ -122,7 +122,7 @@ export function Calculator({ players, onAssign }: Props) {
       <button
         onClick={assign}
         disabled={!target || total === 0}
-        className="w-full py-2.5 rounded-md bg-accent text-paper text-sm font-medium disabled:opacity-35 transition-opacity"
+        className="btn btn-accent w-full py-2.5 text-sm"
       >
         Add {total} to player
       </button>

@@ -25,7 +25,7 @@ export function Confetti({ active, durationMs = 3200 }: Props) {
     resize();
     window.addEventListener("resize", resize);
 
-    const colors = ["#BC6C4A", "#7E8E6B", "#5C6480", "#CBA45E", "#E9E2D4"];
+    const colors = ["#E2A93B", "#1FA08C", "#E2654E", "#8E5AA8", "#FFFDF6"];
     const W = () => window.innerWidth;
     const H = () => window.innerHeight;
     const parts = Array.from({ length: 110 }, () => ({
