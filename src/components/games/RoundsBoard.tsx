@@ -172,9 +172,6 @@ export function RoundsBoard({
             )}
           </div>
         </div>
-        {showInstructions && instructions && <div className="px-3 sm:px-4 py-3 border-b border-line bg-surface/50">
-          <p className="text-[13px] leading-relaxed text-ink/75">{instructions}</p>
-        </div>}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
