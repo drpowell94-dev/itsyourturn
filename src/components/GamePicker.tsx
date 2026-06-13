@@ -222,7 +222,7 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             onClick={() => setSelectedGameForInstructions(null)}
           >
             <div
-              className="absolute right-4 top-32 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4"
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
