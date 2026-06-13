@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 type Props = {
@@ -6,13 +5,9 @@ type Props = {
 };
 
 export function GameInstructions({ instructions }: Props) {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <div className={`transition-all overflow-hidden ${isOpen ? "" : "max-h-0"}`}>
-      <div className="px-3 sm:px-4 py-3 border-b border-line bg-surface/50">
-        <p className="text-[13px] leading-relaxed text-ink/75">{instructions}</p>
-      </div>
+    <div className="px-3 sm:px-4 py-3 border-b border-line bg-surface/50">
+      <p className="text-[13px] leading-relaxed text-ink/75">{instructions}</p>
     </div>
   );
 }
