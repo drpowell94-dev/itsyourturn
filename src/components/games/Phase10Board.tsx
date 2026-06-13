@@ -166,13 +166,15 @@ export function Phase10Board({
           </div>
           <div className="flex items-center gap-3">
             <span className="microcap">Clear all 10 phases</span>
-            <GameInstructionsToggle
-              isOpen={showInstructions}
-              setIsOpen={setShowInstructions}
-            />
+            <GameInstructionsToggle setIsOpen={setShowInstructions} />
           </div>
         </div>
-        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.phase10} />}
+        {showInstructions && (
+          <GameInstructions
+            instructions={GAME_INSTRUCTIONS.phase10}
+            onClose={() => setShowInstructions(false)}
+          />
+        )}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

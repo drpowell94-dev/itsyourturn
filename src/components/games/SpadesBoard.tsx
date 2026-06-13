@@ -307,13 +307,15 @@ export function SpadesBoard({
                 className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
               />
             </label>
-            <GameInstructionsToggle
-              isOpen={showInstructions}
-              setIsOpen={setShowInstructions}
-            />
+            <GameInstructionsToggle setIsOpen={setShowInstructions} />
           </div>
         </div>
-        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.spades} />}
+        {showInstructions && (
+          <GameInstructions
+            instructions={GAME_INSTRUCTIONS.spades}
+            onClose={() => setShowInstructions(false)}
+          />
+        )}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
