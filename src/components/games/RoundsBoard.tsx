@@ -164,16 +164,14 @@ export function RoundsBoard({
               />
             </label>
             {instructions && (
-              <GameInstructionsToggle setIsOpen={setShowInstructions} />
+              <GameInstructionsToggle
+                isOpen={showInstructions}
+                setIsOpen={setShowInstructions}
+              />
             )}
           </div>
         </div>
-        {showInstructions && instructions && (
-          <GameInstructions
-            instructions={instructions}
-            onClose={() => setShowInstructions(false)}
-          />
-        )}
+        {showInstructions && instructions && <GameInstructions instructions={instructions} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
