@@ -28,6 +28,33 @@ export function flip7Reader(standings: Standing[], target: number): string {
   return `${name(lead)} sits at ${lead.total} — ${toGo} to go.`;
 }
 
+// Generic round-game narration. High games (UNO, Farkle, custom-high) read
+// like Flip 7; low games (Hearts, custom-low) end when anyone hits the
+// ceiling and the lowest total wins.
+export function roundsReader(
+  standings: Standing[],
+  target: number,
+  lowWins: boolean,
+): string {
+  if (!lowWins) return flip7Reader(standings, target);
+  if (standings.length === 0) {
+    return "Add the people at your table and I'll keep the running order.";
+  }
+  const asc = [...standings].sort((a, b) => a.total - b.total);
+  const [lead, second] = asc;
+  const high = asc[asc.length - 1];
+  if (high.total >= target) {
+    return `${name(high)} hits ${high.total} — that's the game! ${name(lead)} wins low with ${lead.total}.`;
+  }
+  if (standings.every((p) => p.total === 0)) {
+    return `Lowest score wins — the game ends when anyone reaches ${target}.`;
+  }
+  if (second && second.total === lead.total) {
+    return `${name(lead)} and ${name(second)} are tied low at ${lead.total}. ${name(high)} is closest to the ${target}-point ceiling at ${high.total}.`;
+  }
+  return `${name(lead)} sits safest at ${lead.total}; ${name(high)} is ${target - high.total} from the ${target}-point ceiling.`;
+}
+
 export function phase10Reader(
   players: { initials: string; total: number; phase: number }[],
 ): string {
