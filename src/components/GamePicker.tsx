@@ -217,34 +217,31 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
         </footer>
 
         {selectedGameForInstructions && (
-          <>
+          <div
+            className="fixed inset-0 z-50"
+            onClick={() => setSelectedGameForInstructions(null)}
+          >
             <div
-              className="fixed inset-0 z-40 bg-black/20 cursor-pointer"
-              onClick={() => setSelectedGameForInstructions(null)}
-              aria-hidden
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-surface rounded-2xl border-2 border-line shadow-2xl fade-in max-h-[85vh] flex flex-col">
-                <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-line flex-shrink-0">
-                  <span className="font-display font-bold text-xl">
-                    {GAMES.find((g) => g.id === selectedGameForInstructions)?.name}
-                  </span>
-                  <button
-                    onClick={() => setSelectedGameForInstructions(null)}
-                    className="flex-shrink-0 text-ink/50 hover:text-ink/75 transition-colors"
-                    aria-label="Close instructions"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="px-5 sm:px-6 py-4 overflow-y-auto">
-                  <p className="text-[13px] leading-relaxed text-ink/75">
-                    {selectedGameForInstructions && GAME_INSTRUCTIONS[selectedGameForInstructions]}
-                  </p>
-                </div>
+              className="absolute right-4 top-32 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <span className="font-display font-bold text-lg leading-tight">
+                  {GAMES.find((g) => g.id === selectedGameForInstructions)?.name}
+                </span>
+                <button
+                  onClick={() => setSelectedGameForInstructions(null)}
+                  className="flex-shrink-0 text-ink/50 hover:text-ink/75 transition-colors mt-0.5"
+                  aria-label="Close"
+                >
+                  <X size={18} />
+                </button>
               </div>
+              <p className="text-[13px] leading-relaxed text-ink/75">
+                {selectedGameForInstructions && GAME_INSTRUCTIONS[selectedGameForInstructions]}
+              </p>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
