@@ -219,13 +219,13 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
         {selectedGameForInstructions && (
           <>
             <div
-              className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-[2px]"
+              className="fixed inset-0 z-40"
               onClick={() => setSelectedGameForInstructions(null)}
               aria-hidden
             />
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <div className="w-full max-w-md bg-surface rounded-2xl border-2 border-line shadow-2xl fade-in">
-                <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-line">
+              <div className="w-full max-w-md bg-surface rounded-2xl border-2 border-line shadow-2xl fade-in max-h-[85vh] flex flex-col">
+                <div className="flex items-center justify-between gap-4 px-5 sm:px-6 py-4 border-b border-line flex-shrink-0">
                   <span className="font-display font-bold text-xl">
                     {GAMES.find((g) => g.id === selectedGameForInstructions)?.name}
                   </span>
@@ -237,7 +237,7 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
                     <X size={20} />
                   </button>
                 </div>
-                <div className="px-5 sm:px-6 py-4">
+                <div className="px-5 sm:px-6 py-4 overflow-y-auto">
                   <p className="text-[13px] leading-relaxed text-ink/75">
                     {selectedGameForInstructions && GAME_INSTRUCTIONS[selectedGameForInstructions]}
                   </p>
