@@ -13,25 +13,20 @@ export function GameInstructions({ instructions }: Props) {
 }
 
 export function GameInstructionsToggle({
-  instructions,
   isOpen,
   setIsOpen
 }: {
-  instructions: string;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
 }) {
   return (
-    <>
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 ml-auto px-2 py-1 -my-1 text-ink/50 hover:text-ink/75 transition-colors"
-        aria-label={isOpen ? "Hide instructions" : "Show instructions"}
-      >
-        <span className="text-[11px] font-semibold uppercase tracking-wide">How to play</span>
-        <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
-      </button>
-      {isOpen && <GameInstructions instructions={instructions} />}
-    </>
+    <button
+      onClick={() => setIsOpen(!isOpen)}
+      className="flex items-center gap-1.5 px-2 py-1 -my-1 text-ink/50 hover:text-ink/75 transition-colors"
+      aria-label={isOpen ? "Hide instructions" : "Show instructions"}
+    >
+      <span className="text-[11px] font-semibold uppercase tracking-wide">How to play</span>
+      <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+    </button>
   );
 }

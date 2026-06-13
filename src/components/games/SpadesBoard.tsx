@@ -4,7 +4,7 @@ import { Confetti } from "@/components/Confetti";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { spadesReader } from "@/lib/reader";
-import { GameInstructionsToggle } from "@/components/GameInstructions";
+import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
 import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type SpadesPlayer = {
@@ -308,12 +308,12 @@ export function SpadesBoard({
               />
             </label>
             <GameInstructionsToggle
-              instructions={GAME_INSTRUCTIONS.spades}
               isOpen={showInstructions}
               setIsOpen={setShowInstructions}
             />
           </div>
         </div>
+        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.spades} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

@@ -6,7 +6,7 @@ import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { roundsReader } from "@/lib/reader";
-import { GameInstructionsToggle } from "@/components/GameInstructions";
+import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
 
 export type RoundsPlayer = {
   id: string;
@@ -165,13 +165,13 @@ export function RoundsBoard({
             </label>
             {instructions && (
               <GameInstructionsToggle
-                instructions={instructions}
                 isOpen={showInstructions}
                 setIsOpen={setShowInstructions}
               />
             )}
           </div>
         </div>
+        {showInstructions && instructions && <GameInstructions instructions={instructions} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

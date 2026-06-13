@@ -6,7 +6,7 @@ import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { flip7Reader } from "@/lib/reader";
-import { GameInstructionsToggle } from "@/components/GameInstructions";
+import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
 import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type Flip7Player = {
@@ -150,12 +150,12 @@ export function Flip7Board({
               />
             </label>
             <GameInstructionsToggle
-              instructions={GAME_INSTRUCTIONS.flip7}
               isOpen={showInstructions}
               setIsOpen={setShowInstructions}
             />
           </div>
         </div>
+        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.flip7} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

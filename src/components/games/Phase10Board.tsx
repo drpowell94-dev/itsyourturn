@@ -6,7 +6,7 @@ import { Confetti } from "@/components/Confetti";
 import { selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { phase10Reader } from "@/lib/reader";
-import { GameInstructionsToggle } from "@/components/GameInstructions";
+import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
 import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type Phase10Player = {
@@ -167,12 +167,12 @@ export function Phase10Board({
           <div className="flex items-center gap-3">
             <span className="microcap">Clear all 10 phases</span>
             <GameInstructionsToggle
-              instructions={GAME_INSTRUCTIONS.phase10}
               isOpen={showInstructions}
               setIsOpen={setShowInstructions}
             />
           </div>
         </div>
+        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.phase10} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
