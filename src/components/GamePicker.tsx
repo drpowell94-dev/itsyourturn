@@ -111,10 +111,10 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
                   e.stopPropagation();
                   setSelectedGameForInstructions(g.id);
                 }}
-                className="absolute top-3 right-3 text-ink/40 hover:text-ink/65 transition-colors"
+                className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-ink/5 hover:bg-ink/15 text-ink/60 hover:text-ink/85 transition-all"
                 aria-label={`Instructions for ${g.name}`}
               >
-                <HelpCircle size={18} />
+                <HelpCircle size={20} />
               </button>
               <button
                 onClick={() => onSelect(g.id)}
