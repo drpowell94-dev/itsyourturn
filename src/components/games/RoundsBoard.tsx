@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calculator } from "@/components/Calculator";
+import type { CalcConfig } from "@/lib/calculators";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
@@ -22,6 +24,8 @@ type Props = {
   /** false: first to the target wins (UNO, Farkle).
    *  true: the game ends when anyone reaches the target; lowest total wins (Hearts). */
   lowWins: boolean;
+  /** Game-specific hand calculator keypad; omit to hide the calculator. */
+  calcConfig?: CalcConfig;
   canEdit: (p: RoundsPlayer) => boolean;
   ownerIdForNew: string | null;
   onWinner: (
@@ -35,7 +39,7 @@ const VISIBLE_ROUNDS = 3;
 
 export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  lowWins, canEdit, ownerIdForNew, onWinner, onNewGame,
+  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
 
@@ -94,6 +98,23 @@ export function RoundsBoard({
         return { ...x, rounds };
       }),
     );
+  };
+
+  const addScoreToPlayer = (id: string, value: number) => {
+    const t = players.find((x) => x.id === id);
+    if (t && !canEdit(t)) return;
+    let grewTo = 0;
+    setPlayers((p) =>
+      p.map((x) => {
+        if (x.id !== id) return x;
+        const rounds = [...x.rounds];
+        const idx = rounds.findIndex((r) => r === null);
+        if (idx === -1) { rounds.push(value); grewTo = rounds.length; }
+        else { rounds[idx] = value; }
+        return { ...x, rounds };
+      }),
+    );
+    if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
   };
 
   const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
@@ -264,6 +285,13 @@ export function RoundsBoard({
         </button>
       </div>
 
+      {calcConfig && (
+        <Calculator
+          config={calcConfig}
+          players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
+          onAssign={addScoreToPlayer}
+        />
+      )}
       <Confetti active={!!winner} />
     </>
   );

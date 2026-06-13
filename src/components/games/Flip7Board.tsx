@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
+import { CALC_CONFIGS } from "@/lib/calculators";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
@@ -263,6 +264,7 @@ export function Flip7Board({
       </div>
 
       <Calculator
+        config={CALC_CONFIGS.flip7!}
         players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
         onAssign={addScoreToPlayer}
       />

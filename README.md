@@ -45,7 +45,7 @@ src/
   components/
     GamePicker.tsx         # Landing: numbered game list + PIN join
     HistoryView.tsx        # Per-PIN (server) or local game history
-    Calculator.tsx         # Flip 7 floating hand calculator (1–12, ×2, +15)
+    Calculator.tsx         # Game-aware hand calculator (keypads in lib/calculators.ts)
     Reader.tsx             # The narrator's serif aside
     Confetti.tsx           # Muted-palette canvas confetti
     games/
