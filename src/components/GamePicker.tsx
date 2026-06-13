@@ -109,13 +109,39 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedGameForInstructions(g.id);
+                  setSelectedGameForInstructions(selectedGameForInstructions === g.id ? null : g.id);
                 }}
                 className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-ink/5 hover:bg-ink/15 text-ink/60 hover:text-ink/85 transition-all"
                 aria-label={`Instructions for ${g.name}`}
               >
                 <HelpCircle size={20} />
               </button>
+
+              {selectedGameForInstructions === g.id && (
+                <div className="absolute inset-x-0 -bottom-2 translate-y-full w-full mt-2">
+                  <div className="bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4">
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <span className="font-display font-bold text-lg leading-tight">
+                        {g.name}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedGameForInstructions(null);
+                        }}
+                        className="flex-shrink-0 text-ink/50 hover:text-ink/75 transition-colors mt-0.5"
+                        aria-label="Close"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-ink/75">
+                      {GAME_INSTRUCTIONS[g.id]}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <button
                 onClick={() => onSelect(g.id)}
                 className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
@@ -216,34 +242,6 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
           </button>
         </footer>
 
-        {selectedGameForInstructions && (
-          <>
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setSelectedGameForInstructions(null)}
-            />
-            <div
-              className="fixed right-4 top-1/2 -translate-y-1/2 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4 z-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <span className="font-display font-bold text-lg leading-tight">
-                  {GAMES.find((g) => g.id === selectedGameForInstructions)?.name}
-                </span>
-                <button
-                  onClick={() => setSelectedGameForInstructions(null)}
-                  className="flex-shrink-0 text-ink/50 hover:text-ink/75 transition-colors mt-0.5"
-                  aria-label="Close"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              <p className="text-[13px] leading-relaxed text-ink/75">
-                {selectedGameForInstructions && GAME_INSTRUCTIONS[selectedGameForInstructions]}
-              </p>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
