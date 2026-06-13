@@ -6,8 +6,6 @@ import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { flip7Reader } from "@/lib/reader";
-import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
-import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type Flip7Player = {
   id: string;
@@ -39,7 +37,6 @@ export function Flip7Board({
   canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
-  const [showInstructions, setShowInstructions] = useState(false);
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -149,13 +146,8 @@ export function Flip7Board({
                 className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
               />
             </label>
-            <GameInstructionsToggle
-              isOpen={showInstructions}
-              setIsOpen={setShowInstructions}
-            />
           </div>
         </div>
-        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.flip7} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

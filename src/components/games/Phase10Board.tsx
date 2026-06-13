@@ -6,8 +6,6 @@ import { Confetti } from "@/components/Confetti";
 import { selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { phase10Reader } from "@/lib/reader";
-import { GameInstructions, GameInstructionsToggle } from "@/components/GameInstructions";
-import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type Phase10Player = {
   id: string;
@@ -37,7 +35,6 @@ export function Phase10Board({
   players, setPlayers, maxRound, setMaxRound, canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
-  const [showInstructions, setShowInstructions] = useState(false);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -164,15 +161,8 @@ export function Phase10Board({
             </span>
             <span className="microcap">Played {playedHandsCount}</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="microcap">Clear all 10 phases</span>
-            <GameInstructionsToggle
-              isOpen={showInstructions}
-              setIsOpen={setShowInstructions}
-            />
-          </div>
+          <span className="microcap">Clear all 10 phases</span>
         </div>
-        {showInstructions && <GameInstructions instructions={GAME_INSTRUCTIONS.phase10} />}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

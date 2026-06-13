@@ -9,7 +9,6 @@ import {
   type CustomRules,
   type GameType,
 } from "@/lib/games";
-import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { GamePicker } from "@/components/GamePicker";
 import { CustomSetup } from "@/components/CustomSetup";
@@ -481,7 +480,6 @@ export default function App() {
             setTargetScore={setTargetScore}
             lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
             calcConfig={CALC_CONFIGS[gameType!]}
-            instructions={GAME_INSTRUCTIONS[gameType!]}
             canEdit={canEdit}
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
