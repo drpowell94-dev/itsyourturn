@@ -217,12 +217,13 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
         </footer>
 
         {selectedGameForInstructions && (
-          <div
-            className="fixed inset-0 z-50"
-            onClick={() => setSelectedGameForInstructions(null)}
-          >
+          <>
             <div
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4"
+              className="fixed inset-0 z-40"
+              onClick={() => setSelectedGameForInstructions(null)}
+            />
+            <div
+              className="fixed right-4 top-1/2 -translate-y-1/2 w-80 bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4 z-50"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-3 mb-3">
@@ -241,7 +242,7 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
                 {selectedGameForInstructions && GAME_INSTRUCTIONS[selectedGameForInstructions]}
               </p>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
