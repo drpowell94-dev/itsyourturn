@@ -43,6 +43,26 @@
   --accent-soft: oklch(0.94 0.04 310);
 }
 
+[data-game="uno"] {
+  --accent: var(--coral);
+  --accent-soft: oklch(0.94 0.045 35);
+}
+
+[data-game="farkle"] {
+  --accent: var(--gold);
+  --accent-soft: oklch(0.94 0.05 80);
+}
+
+[data-game="hearts"] {
+  --accent: oklch(0.55 0.17 25); /* crimson */
+  --accent-soft: oklch(0.94 0.045 25);
+}
+
+[data-game="custom"] {
+  --accent: var(--teal);
+  --accent-soft: oklch(0.93 0.045 180);
+}
+
 @theme inline {
   --color-paper: var(--paper);
   --color-surface: var(--surface);

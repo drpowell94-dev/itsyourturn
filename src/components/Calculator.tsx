@@ -1,29 +1,26 @@
 import { useState } from "react";
 import { Calculator as CalcIcon, X, Delete } from "lucide-react";
+import type { CalcConfig } from "@/lib/calculators";
 
 type Player = { id: string; initials: string };
 
 type Props = {
+  config: CalcConfig;
   players: Player[];
   onAssign: (playerId: string, sum: number) => void;
 };
 
-// Flip 7 round calculator. Each key press adds that card's value to the
-// running total; ×2 doubles it; +15 adds the Flip 7 bonus; "=" commits the
-// total to the selected player's next empty round.
-export function Calculator({ players, onAssign }: Props) {
+// Game-aware hand calculator. Each key press adds that card/score to the
+// running total; ×2 (where the game has one) doubles it; the total commits
+// to the selected player's next empty round.
+export function Calculator({ config, players, onAssign }: Props) {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<number[]>([]);
   const [target, setTarget] = useState<string>("");
 
   const total = entries.reduce((a, b) => a + b, 0);
 
-  const press = (d: string) => {
-    const n = parseInt(d, 10);
-    if (Number.isNaN(n)) return;
-    setEntries((e) => [...e, n]);
-  };
-  const addBonus = () => setEntries((e) => [...e, 15]);
+  const press = (v: number) => setEntries((e) => [...e, v]);
   const doubleTotal = () =>
     setEntries((e) => {
       const t = e.reduce((a, b) => a + b, 0);
@@ -53,14 +50,14 @@ export function Calculator({ players, onAssign }: Props) {
     );
   }
 
-  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
   const keyCls =
-    "py-2.5 rounded-xl border-2 border-line bg-paper font-display font-bold text-sm text-ink hover:border-accent hover:text-accent active:scale-95 transition-all";
+    "rounded-xl border-2 border-line bg-paper text-ink hover:border-accent hover:text-accent active:scale-95 transition-all flex flex-col items-center justify-center py-2 min-h-10";
+  const utilityCols = config.showDouble ? "grid-cols-3" : "grid-cols-2";
 
   return (
     <div className="fixed bottom-5 right-5 z-40 w-72 bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-3.5 fade-in">
       <div className="flex items-center justify-between mb-3">
-        <span className="microcap">Hand calculator</span>
+        <span className="microcap">{config.heading}</span>
         <button
           onClick={() => setOpen(false)}
           aria-label="Close"
@@ -70,39 +67,49 @@ export function Calculator({ players, onAssign }: Props) {
         </button>
       </div>
 
-      <div className="bg-accent-soft border-2 border-line rounded-xl px-3 py-2.5 mb-3 flex items-baseline justify-between">
-        <span className="microcap">This hand</span>
-        <span className="font-mono font-bold tabular-nums text-3xl text-accent leading-none">
-          {total}
-        </span>
+      <div className="bg-accent-soft border-2 border-line rounded-xl px-3 py-2.5 mb-3">
+        <div className="flex items-baseline justify-between">
+          <span className="microcap">This hand</span>
+          <span className="font-mono font-bold tabular-nums text-3xl text-accent leading-none">
+            {total}
+          </span>
+        </div>
+        {entries.length > 0 && (
+          <div className="mt-1 flex justify-end overflow-hidden">
+            <span className="font-mono text-[10px] text-ink/45 whitespace-nowrap">
+              {entries.join(" + ")}
+            </span>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-        {keys.map((k) => (
-          <button key={k} onClick={() => press(k)} className={keyCls}>
-            {k}
+      <div className={`grid gap-1.5 mb-1.5 ${config.cols === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
+        {config.keys.map((k, i) => (
+          <button key={i} onClick={() => press(k.value)} className={keyCls}>
+            <span className="font-display font-bold text-sm leading-tight">{k.label}</span>
+            {k.sub && (
+              <span className="text-[9px] font-bold text-ink/45 leading-tight">{k.sub}</span>
+            )}
           </button>
         ))}
-        <button onClick={back} aria-label="Backspace" className={`${keyCls} flex items-center justify-center`}>
-          <Delete size={15} />
-        </button>
-        <button onClick={() => press("0")} className={keyCls}>
-          0
-        </button>
-        <button
-          onClick={assign}
-          disabled={!target || total === 0}
-          aria-label="Commit score"
-          className="py-2.5 rounded-xl bg-accent text-white font-display font-bold text-sm disabled:opacity-35 active:scale-95 transition-all"
-        >
-          =
-        </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 mb-3">
-        <button onClick={doubleTotal} className={`${keyCls} text-xs`}>×2</button>
-        <button onClick={addBonus} className={`${keyCls} text-xs`}>+15</button>
-        <button onClick={clear} className={`${keyCls} text-xs`}>Clear</button>
+      <div className={`grid ${utilityCols} gap-1.5 mb-3`}>
+        <button
+          onClick={back}
+          aria-label="Undo last entry"
+          className={`${keyCls} flex-row gap-1 text-xs font-display font-bold`}
+        >
+          <Delete size={13} /> Undo
+        </button>
+        {config.showDouble && (
+          <button onClick={doubleTotal} className={`${keyCls} text-xs font-display font-bold`}>
+            ×2
+          </button>
+        )}
+        <button onClick={clear} className={`${keyCls} text-xs font-display font-bold`}>
+          Clear
+        </button>
       </div>
 
       <select

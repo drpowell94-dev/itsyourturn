@@ -2,7 +2,8 @@
 
 Game night's live scorekeeper. Pick a game, host a table, share a 4-digit PIN,
 and every phone at the table keeps score together — hand by hand, in real
-time. Supports **Flip 7**, **Phase 10**, and **Spades**.
+time. Supports **Flip 7**, **Phase 10**, **Spades**, **UNO**, **Farkle**, and
+**Hearts**, plus a **make-your-own mode** for any round-scored game.
 
 ## Design language
 
@@ -44,7 +45,7 @@ src/
   components/
     GamePicker.tsx         # Landing: numbered game list + PIN join
     HistoryView.tsx        # Per-PIN (server) or local game history
-    Calculator.tsx         # Flip 7 floating hand calculator (1–12, ×2, +15)
+    Calculator.tsx         # Game-aware hand calculator (keypads in lib/calculators.ts)
     Reader.tsx             # The narrator's serif aside
     Confetti.tsx           # Muted-palette canvas confetti
     games/
@@ -80,6 +81,15 @@ src/
   finalizes only when both bids and both trick counts are valid and tricks sum
   to 13. Made bid: `bid × 10 + bags`; missed bid: `−bid × 10`. Nil and bag
   penalties are intentionally not modeled.
+- **UNO** — round scores add up; first to the target (default 500) wins.
+- **Farkle** — running banked totals; first to the target (default 10,000)
+  wins.
+- **Hearts** — lowest score wins; the game ends when anyone reaches the
+  ceiling (default 100).
+- **Your Game (custom)** — the host names the game, picks highest-or-lowest
+  wins, and sets the target. The rules sync to everyone at the table through
+  the shared state blob (`customRules`). UNO, Farkle, Hearts, and custom mode
+  all share one generic rounds board (`RoundsBoard`).
 
 ## Run it
 

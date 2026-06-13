@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
-import { CALC_CONFIGS } from "@/lib/calculators";
-import { TargetInput, selectOnFocus } from "@/components/TargetInput";
+import type { CalcConfig } from "@/lib/calculators";
 import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
-import { flip7Reader } from "@/lib/reader";
+import { TargetInput, selectOnFocus } from "@/components/TargetInput";
+import { roundsReader } from "@/lib/reader";
 
-export type Flip7Player = {
+export type RoundsPlayer = {
   id: string;
   initials: string;
   rounds: (number | null)[];
@@ -15,13 +15,18 @@ export type Flip7Player = {
 };
 
 type Props = {
-  players: Flip7Player[];
-  setPlayers: (updater: (p: Flip7Player[]) => Flip7Player[]) => void;
+  players: RoundsPlayer[];
+  setPlayers: (updater: (p: RoundsPlayer[]) => RoundsPlayer[]) => void;
   maxRound: number;
   setMaxRound: (updater: (n: number) => number) => void;
   targetScore: number;
   setTargetScore: (n: number) => void;
-  canEdit: (p: Flip7Player) => boolean;
+  /** false: first to the target wins (UNO, Farkle).
+   *  true: the game ends when anyone reaches the target; lowest total wins (Hearts). */
+  lowWins: boolean;
+  /** Game-specific hand calculator keypad; omit to hide the calculator. */
+  calcConfig?: CalcConfig;
+  canEdit: (p: RoundsPlayer) => boolean;
   ownerIdForNew: string | null;
   onWinner: (
     winnerInitials: string | null,
@@ -32,15 +37,19 @@ type Props = {
 
 const VISIBLE_ROUNDS = 3;
 
-export function Flip7Board({
+export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
 
-  const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
-  const sorted = [...players].sort((a, b) => total(b) - total(a));
-  const winner = sorted.length > 0 && total(sorted[0]) >= targetScore ? sorted[0] : null;
+  const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
+  // Standings: best player first in either direction.
+  const sorted = [...players].sort((a, b) => (lowWins ? total(a) - total(b) : total(b) - total(a)));
+  // Both directions end when any total reaches the target; the best-ranked
+  // player at that moment is the winner.
+  const gameOver = players.some((p) => total(p) >= targetScore);
+  const winner = sorted.length > 0 && gameOver ? sorted[0] : null;
 
   const savedWinnerRef = useRef<string | null>(null);
   useEffect(() => {
@@ -123,7 +132,10 @@ export function Flip7Board({
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
-  const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
+  const hasAnyScore = players.some((p) => p.rounds.some((r) => r != null));
+
+  const rowGrid =
+    "grid grid-cols-[3.2rem_3.6rem_1fr_2rem] sm:grid-cols-[4.5rem_4.5rem_1fr_2.5rem] gap-2 items-center";
   const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
 
   return (
@@ -138,11 +150,12 @@ export function Flip7Board({
             <span className="microcap">Played {playedHandsCount}</span>
           </div>
           <label className="microcap flex items-center gap-1.5">
-            To
+            {lowWins ? "Ends at" : "To"}
             <TargetInput
               value={targetScore}
               onCommit={setTargetScore}
-              className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+              maxDigits={5}
+              className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
             />
           </label>
         </div>
@@ -150,7 +163,9 @@ export function Flip7Board({
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
             <span className="font-display font-bold text-base">
-              🏆 {winner.initials} takes it with {total(winner)}!
+              🏆 {lowWins
+                ? `${winner.initials} wins low with ${total(winner)}!`
+                : `${winner.initials} takes it with ${total(winner)}!`}
             </span>
           </div>
         )}
@@ -192,7 +207,8 @@ export function Flip7Board({
           <div>
             {sorted.map((pl, idx) => {
               const isWinner = winner?.id === pl.id;
-              const leading = idx === 0 && total(pl) > 0;
+              const leading = idx === 0 && hasAnyScore;
+              const atLimit = total(pl) >= targetScore;
               return (
                 <div
                   key={pl.id}
@@ -211,7 +227,7 @@ export function Flip7Board({
                   />
                   <span
                     className={`text-right font-mono font-semibold tabular-nums text-base sm:text-lg ${
-                      leading || isWinner ? "text-accent" : "text-ink"
+                      atLimit && lowWins ? "text-coral" : leading || isWinner ? "text-accent" : "text-ink"
                     }`}
                   >
                     {total(pl)}
@@ -249,7 +265,13 @@ export function Flip7Board({
         )}
       </section>
 
-      <Reader text={flip7Reader(players.map((p) => ({ initials: p.initials, total: total(p) })), targetScore)} />
+      <Reader
+        text={roundsReader(
+          players.map((p) => ({ initials: p.initials, total: total(p) })),
+          targetScore,
+          lowWins,
+        )}
+      />
 
       <div className="grid grid-cols-2 gap-2 mt-5">
         <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
@@ -263,11 +285,13 @@ export function Flip7Board({
         </button>
       </div>
 
-      <Calculator
-        config={CALC_CONFIGS.flip7!}
-        players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
-        onAssign={addScoreToPlayer}
-      />
+      {calcConfig && (
+        <Calculator
+          config={calcConfig}
+          players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
+          onAssign={addScoreToPlayer}
+        />
+      )}
       <Confetti active={!!winner} />
     </>
   );

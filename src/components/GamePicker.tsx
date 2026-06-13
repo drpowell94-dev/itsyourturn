@@ -40,6 +40,30 @@ const GAMES: {
     color: "var(--plum)",
     tilt: "hover:-rotate-1",
   },
+  {
+    id: "uno",
+    name: "UNO",
+    tag: "Shed your hand",
+    desc: "Round scores add up — first to 500 takes it.",
+    color: "var(--coral)",
+    tilt: "hover:rotate-1",
+  },
+  {
+    id: "farkle",
+    name: "Farkle",
+    tag: "Risk the roll",
+    desc: "Bank your dice and race to 10,000.",
+    color: "var(--gold)",
+    tilt: "hover:-rotate-1",
+  },
+  {
+    id: "hearts",
+    name: "Hearts",
+    tag: "Duck the queen",
+    desc: "Keep it low! The game ends at 100 points.",
+    color: "oklch(0.55 0.17 25)",
+    tilt: "hover:rotate-1",
+  },
 ];
 
 export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
@@ -107,6 +131,31 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             </button>
           ))}
         </section>
+
+        <button
+          onClick={() => onSelect("custom")}
+          className="group card-pop mt-3.5 w-full p-4.5 sm:p-5 text-left flex items-center gap-4 transition-transform duration-150 hover:-translate-y-1"
+        >
+          <div
+            aria-hidden
+            className="shrink-0 h-9 w-9 rounded-lg border-[3px] border-dashed border-teal bg-surface -rotate-6 group-hover:rotate-3 transition-transform flex items-center justify-center font-display font-bold text-teal text-lg leading-none"
+          >
+            +
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="font-display font-bold text-xl leading-tight">Make your own</span>
+            <span className="ml-2 font-display font-bold text-[10px] tracking-[0.14em] uppercase text-teal">
+              Any game
+            </span>
+            <div className="text-[13px] text-ink/65 leading-snug">
+              Name it, set a target, choose high or low wins — score anything.
+            </div>
+          </div>
+          <ArrowRight
+            size={16}
+            className="shrink-0 text-teal group-hover:translate-x-0.5 transition-transform"
+          />
+        </button>
 
         <section className="mt-9 card-pop p-4.5 sm:p-5">
           <div className="microcap mb-3">Joining someone&rsquo;s table?</div>

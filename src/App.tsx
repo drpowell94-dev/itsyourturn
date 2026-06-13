@@ -2,12 +2,21 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Copy, Check, LogOut, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
-import { GAME_LABELS, isGameType, type GameType } from "@/lib/games";
+import {
+  GAME_DEFAULT_TARGET,
+  GAME_LABELS,
+  isGameType,
+  type CustomRules,
+  type GameType,
+} from "@/lib/games";
+import { CALC_CONFIGS } from "@/lib/calculators";
 import { GamePicker } from "@/components/GamePicker";
+import { CustomSetup } from "@/components/CustomSetup";
 import { HistoryView } from "@/components/HistoryView";
 import { Flip7Board } from "@/components/games/Flip7Board";
 import { Phase10Board } from "@/components/games/Phase10Board";
 import { SpadesBoard } from "@/components/games/SpadesBoard";
+import { RoundsBoard } from "@/components/games/RoundsBoard";
 
 type Player = {
   id: string;
@@ -36,6 +45,7 @@ export default function App() {
   const [pin, setPin] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
   const [gameType, setGameType] = useState<GameType | null>(null);
+  const [customRules, setCustomRules] = useState<CustomRules | null>(null);
   const [showClaim, setShowClaim] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -68,6 +78,7 @@ export default function App() {
       setTargetScore(state.targetScore ?? 200);
       setMaxRound(state.maxRound ?? 3);
       setHostId(state.hostId ?? null);
+      setCustomRules(state.customRules ?? null);
       if (isGameType(state.gameType)) setGameType(state.gameType);
       setTimeout(() => (applyingRemote.current = false), 0);
     };
@@ -120,7 +131,7 @@ export default function App() {
       let q = supabase
         .from("games")
         .update({
-          state: { players, targetScore, maxRound, hostId, gameType },
+          state: { players, targetScore, maxRound, hostId, gameType, customRules },
           game_type: gameType,
           updated_at,
         })
@@ -139,15 +150,16 @@ export default function App() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [players, targetScore, maxRound, pin, hostId, gameType]);
+  }, [players, targetScore, maxRound, pin, hostId, gameType, customRules]);
 
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
-    setTargetScore(type === "spades" ? 500 : 200);
+    setTargetScore(GAME_DEFAULT_TARGET[type]);
   };
 
   const createGame = async (type: GameType) => {
-    const initialTarget = type === "spades" ? 500 : 200;
+    // Custom games keep whatever target the host chose in setup.
+    const initialTarget = type === "custom" ? targetScore : GAME_DEFAULT_TARGET[type];
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const { data, error } = await supabase
@@ -155,7 +167,14 @@ export default function App() {
         .insert({
           pin: newPin,
           game_type: type,
-          state: { players: [], targetScore: initialTarget, maxRound: 3, hostId: deviceId, gameType: type },
+          state: {
+            players: [],
+            targetScore: initialTarget,
+            maxRound: 3,
+            hostId: deviceId,
+            gameType: type,
+            customRules,
+          },
         })
         .select("updated_at")
         .single();
@@ -188,6 +207,7 @@ export default function App() {
     setHostId(null);
     setShowClaim(false);
     setGameType(null);
+    setCustomRules(null);
     window.history.replaceState(null, "", window.location.pathname);
     skipNextSave.current = true;
     setPlayers([]);
@@ -196,6 +216,7 @@ export default function App() {
 
   const backToPicker = () => {
     setGameType(null);
+    setCustomRules(null);
     setPlayers([]);
     setMaxRound(3);
     setTargetScore(200);
@@ -308,7 +329,7 @@ export default function App() {
   }
 
   // ── Joining: waiting for the table to load ──────────────────────────
-  if (pin && !gameType) {
+  if (pin && (!gameType || (gameType === "custom" && !customRules))) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center px-5">
         <p className="font-display font-semibold text-xl text-ink/55 fade-in">
@@ -317,6 +338,22 @@ export default function App() {
       </div>
     );
   }
+
+  // ── Custom game: name it and pick the rules before the board ────────
+  if (gameType === "custom" && !customRules) {
+    return (
+      <CustomSetup
+        onBack={backToPicker}
+        onStart={({ name, lowWins, target }) => {
+          setCustomRules({ name, lowWins });
+          setTargetScore(target);
+        }}
+      />
+    );
+  }
+
+  const title =
+    gameType === "custom" ? customRules?.name || "Your Game" : GAME_LABELS[gameType!];
 
   // ── The table ───────────────────────────────────────────────────────
   return (
@@ -329,10 +366,10 @@ export default function App() {
         <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 mb-6 sm:mb-8">
           <div>
             <div className="microcap mb-1.5">
-              It&rsquo;s your turn · <span className="text-accent">{GAME_LABELS[gameType!]}</span>
+              It&rsquo;s your turn · <span className="text-accent">{title}</span>
             </div>
             <h1 className="font-display font-bold text-4xl sm:text-[44px] leading-none tracking-tight">
-              {GAME_LABELS[gameType!]}
+              {title}
             </h1>
             {!pin && (
               <button
@@ -420,7 +457,7 @@ export default function App() {
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
-        ) : (
+        ) : gameType === "spades" ? (
           <SpadesBoard
             players={players}
             setPlayers={setPlayers as any}
@@ -428,6 +465,21 @@ export default function App() {
             setMaxRound={setMaxRound}
             targetScore={targetScore}
             setTargetScore={setTargetScore}
+            canEdit={canEdit}
+            ownerIdForNew={pin ? deviceId : null}
+            onWinner={handleWinner}
+            onNewGame={handleNewGame}
+          />
+        ) : (
+          <RoundsBoard
+            players={players}
+            setPlayers={setPlayers as any}
+            maxRound={maxRound}
+            setMaxRound={setMaxRound}
+            targetScore={targetScore}
+            setTargetScore={setTargetScore}
+            lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
+            calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
@@ -441,7 +493,7 @@ export default function App() {
         <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
             <div className="microcap mb-1">
-              Table {pin} · {GAME_LABELS[gameType!]}
+              Table {pin} · {title}
             </div>
             <h2 className="font-display font-bold text-2xl mb-4">Who are you tonight?</h2>
             {players.length === 0 ? (

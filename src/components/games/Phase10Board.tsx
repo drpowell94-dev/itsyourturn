@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, X, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Calculator } from "@/components/Calculator";
+import { CALC_CONFIGS } from "@/lib/calculators";
 import { Confetti } from "@/components/Confetti";
 import { selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
@@ -99,6 +101,23 @@ export function Phase10Board({
         return { ...x, rounds };
       }),
     );
+  };
+
+  const addScoreToPlayer = (id: string, value: number) => {
+    const t = players.find((x) => x.id === id);
+    if (t && !canEdit(t)) return;
+    let grewTo = 0;
+    setPlayers((p) =>
+      p.map((x) => {
+        if (x.id !== id) return x;
+        const rounds = [...x.rounds];
+        const idx = rounds.findIndex((r) => r === null);
+        if (idx === -1) { rounds.push(value); grewTo = rounds.length; }
+        else { rounds[idx] = value; }
+        return { ...x, rounds };
+      }),
+    );
+    if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
   };
 
   const bumpPhase = (id: string, delta: number) => {
@@ -292,6 +311,11 @@ export function Phase10Board({
         </button>
       </div>
 
+      <Calculator
+        config={CALC_CONFIGS.phase10!}
+        players={players.filter(canEdit).map((p) => ({ id: p.id, initials: p.initials }))}
+        onAssign={addScoreToPlayer}
+      />
       <Confetti active={!!winner} />
     </>
   );
