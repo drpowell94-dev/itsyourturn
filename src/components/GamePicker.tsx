@@ -219,7 +219,7 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
         {selectedGameForInstructions && (
           <>
             <div
-              className="fixed inset-0 z-40"
+              className="fixed inset-0 z-40 bg-black/20 cursor-pointer"
               onClick={() => setSelectedGameForInstructions(null)}
               aria-hidden
             />
