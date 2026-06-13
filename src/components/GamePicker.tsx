@@ -118,8 +118,8 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
               </button>
 
               {selectedGameForInstructions === g.id && (
-                <div className="absolute inset-x-0 -bottom-2 translate-y-full w-full mt-2 z-50">
-                  <div className="bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4 relative">
+                <div className="absolute inset-0 z-50 flex items-center justify-center p-3">
+                  <div className="bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4 w-full">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <span className="font-display font-bold text-lg leading-tight">
                         {g.name}
