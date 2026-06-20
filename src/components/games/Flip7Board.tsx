@@ -37,6 +37,8 @@ export function Flip7Board({
   canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [newPlayerInitials, setNewPlayerInitials] = useState("");
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -55,11 +57,15 @@ export function Flip7Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
 
-  const addPlayer = () =>
+  const confirmAddPlayer = () => {
+    if (!newPlayerInitials.trim()) return;
     setPlayers((p) => [
       ...p,
-      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
+      { id: crypto.randomUUID(), initials: newPlayerInitials.toUpperCase().slice(0, 3), rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
     ]);
+    setNewPlayerInitials("");
+    setAddingPlayer(false);
+  };
 
   const removePlayer = (id: string) =>
     setPlayers((p) => {
@@ -258,12 +264,48 @@ export function Flip7Board({
           New round
         </button>
         <button
-          onClick={addPlayer}
+          onClick={() => setAddingPlayer(true)}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
           <Plus size={15} /> Add player
         </button>
       </div>
+
+      {addingPlayer && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Player name</h2>
+            <input
+              type="text"
+              value={newPlayerInitials}
+              onChange={(e) => setNewPlayerInitials(e.target.value.toUpperCase().slice(0, 3))}
+              onKeyDown={(e) => e.key === "Enter" && confirmAddPlayer()}
+              autoFocus
+              placeholder="ABC"
+              maxLength={3}
+              className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 mb-4 transition-colors"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmAddPlayer}
+                disabled={!newPlayerInitials.trim()}
+                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setAddingPlayer(false);
+                  setNewPlayerInitials("");
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Calculator
         config={CALC_CONFIGS.flip7!}
