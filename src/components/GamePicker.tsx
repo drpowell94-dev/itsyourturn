@@ -84,8 +84,24 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
   return (
     <div className="min-h-screen bg-paper flex justify-center px-5 py-10 sm:py-14">
       <div className="w-full max-w-xl fade-in">
-        {/* Join table — front and center */}
-        <section className="mb-10 card-pop p-4.5 sm:p-5">
+        <header className="text-center mb-10">
+          {/* The two-cards mark */}
+          <div aria-hidden className="relative h-16 w-16 mx-auto mb-5">
+            <div className="absolute left-0 top-0 h-11 w-11 rounded-xl border-4 border-gold bg-surface -rotate-12" />
+            <div className="absolute left-5 top-3 h-11 w-11 rounded-xl border-4 border-teal bg-surface rotate-6" />
+          </div>
+          <div className="microcap mb-2">Game night · Live score sheet</div>
+          <h1 className="font-display font-bold text-5xl sm:text-6xl tracking-tight leading-none mb-3">
+            It&rsquo;s your turn!
+          </h1>
+          <p className="text-ink/65 text-[15px] leading-relaxed max-w-md mx-auto">
+            Pick a game, rally the table, and watch every phone keep score together —
+            live, hand by hand.
+          </p>
+        </header>
+
+        {/* Join table — above games but below title */}
+        <section className="mb-7 card-pop p-4.5 sm:p-5">
           <div className="microcap mb-3">Already have a table PIN?</div>
           <div className="flex items-center gap-2.5">
             <input
@@ -110,21 +126,6 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             <p className="mt-2 text-xs font-semibold text-coral">A table PIN is 4–6 digits.</p>
           )}
         </section>
-
-        <header className="text-center mb-10">
-          {/* The two-cards mark */}
-          <div aria-hidden className="relative h-16 w-16 mx-auto mb-5">
-            <div className="absolute left-0 top-0 h-11 w-11 rounded-xl border-4 border-gold bg-surface -rotate-12" />
-            <div className="absolute left-5 top-3 h-11 w-11 rounded-xl border-4 border-teal bg-surface rotate-6" />
-          </div>
-          <div className="microcap mb-2">Game night · Live score sheet</div>
-          <h1 className="font-display font-bold text-5xl sm:text-6xl tracking-tight leading-none mb-3">
-            It&rsquo;s your turn!
-          </h1>
-          <p className="text-ink/65 text-[15px] leading-relaxed max-w-md mx-auto">
-            Start a new game or join someone&rsquo;s table above.
-          </p>
-        </header>
 
         <section aria-label="Choose a game" className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {GAMES.map((g) => (
