@@ -33,23 +33,43 @@ type Props = {
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => void;
   onNewGame: () => void;
+  gameType?: string;
 };
 
 const VISIBLE_ROUNDS = 3;
 
 export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame,
+  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame, gameType,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [confirmNewRound, setConfirmNewRound] = useState(false);
+
+  // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
+  useEffect(() => {
+    if (players.length === 0 && maxRound === 3) {
+      setRoundOffset(0);
+      setConfirmNewRound(false);
+    }
+  }, [players.length, maxRound]);
 
   const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   // Standings: best player first in either direction.
   const sorted = [...players].sort((a, b) => (lowWins ? total(a) - total(b) : total(b) - total(a)));
-  // Both directions end when any total reaches the target; the best-ranked
-  // player at that moment is the winner.
+  // In UNO with target score: first to reach target LOSES (winner is lowest scorer)
+  // In other games: best-ranked player wins
   const gameOver = players.some((p) => total(p) >= targetScore);
-  const winner = sorted.length > 0 && gameOver ? sorted[0] : null;
+  let winner = null;
+  if (gameOver && sorted.length > 0) {
+    if (gameType === "uno" && !lowWins) {
+      // UNO: when someone reaches target, lowest scorer wins
+      const sortedByScore = [...players].sort((a, b) => total(a) - total(b));
+      winner = sortedByScore[0];
+    } else {
+      // Other games: best-ranked player wins
+      winner = sorted[0];
+    }
+  }
 
   const savedWinnerRef = useRef<string | null>(null);
   useEffect(() => {
@@ -61,8 +81,7 @@ export function RoundsBoard({
       );
     }
     if (!winner) savedWinnerRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [winner?.id]);
+  }, [winner?.id, onWinner, sorted]);
 
   const addPlayer = () =>
     setPlayers((p) => [
@@ -117,6 +136,17 @@ export function RoundsBoard({
     if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
   };
 
+  const setAllCurrentRoundToZero = () => {
+    setPlayers((p) =>
+      p.map((x) => {
+        const rounds = [...x.rounds];
+        while (rounds.length <= currentRound) rounds.push(null);
+        if (rounds[currentRound] === null) rounds[currentRound] = 0;
+        return { ...x, rounds };
+      }),
+    );
+  };
+
   const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
   const canPrev = roundOffset > 0;
   const goNext = () => {
@@ -145,9 +175,9 @@ export function RoundsBoard({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span> of {maxRound}
             </span>
-            <span className="microcap">Played {playedHandsCount}</span>
+            <span className="microcap">({playedHandsCount} scored)</span>
           </div>
           <label className="microcap flex items-center gap-1.5">
             {lowWins ? "Ends at" : "To"}
@@ -163,7 +193,9 @@ export function RoundsBoard({
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
             <span className="font-display font-bold text-base">
-              🏆 {lowWins
+              🏆 {gameType === "uno" && !lowWins
+                ? `${winner.initials} survives with ${total(winner)}!`
+                : lowWins
                 ? `${winner.initials} wins low with ${total(winner)}!`
                 : `${winner.initials} takes it with ${total(winner)}!`}
             </span>
@@ -234,20 +266,27 @@ export function RoundsBoard({
                   </span>
                   <div className={roundsGrid}>
                     <span />
-                    {visibleRounds.map((r) => (
-                      <input
-                        key={r}
-                        type="text"
-                        inputMode="numeric"
-                        value={pl.rounds[r] ?? ""}
-                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
-                        onFocus={selectOnFocus}
-                        readOnly={!canEdit(pl)}
-                        placeholder="–"
-                        aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
-                      />
-                    ))}
+                    {visibleRounds.map((r) => {
+                      const isCurrentRound = r === currentRound;
+                      return (
+                        <input
+                          key={r}
+                          type="text"
+                          inputMode="numeric"
+                          value={pl.rounds[r] ?? ""}
+                          onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                          onFocus={selectOnFocus}
+                          readOnly={!canEdit(pl)}
+                          placeholder="–"
+                          aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)": ""}`}
+                          className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
+                            isCurrentRound
+                              ? "bg-accent-soft border-accent focus:border-accent"
+                              : "bg-paper border-line focus:border-accent"
+                          }`}
+                        />
+                      );
+                    })}
                     <span />
                   </div>
                   <button
@@ -273,15 +312,29 @@ export function RoundsBoard({
         )}
       />
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
-          New round
+      <div className="grid grid-cols-3 gap-2 mt-5">
+        <button
+          onClick={setAllCurrentRoundToZero}
+          className="btn btn-white py-2.5 text-sm"
+          title="Set all players to 0 for this round"
+        >
+          All 0
+        </button>
+        <button
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+          className={`btn py-2.5 text-sm ${
+            confirmNewRound
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewRound ? "Sure?" : "New round"}
         </button>
         <button
           onClick={addPlayer}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
-          <Plus size={15} /> Add player
+          <Plus size={15} /> Add
         </button>
       </div>
 

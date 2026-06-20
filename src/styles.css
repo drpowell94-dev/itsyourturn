@@ -82,12 +82,42 @@
 
 html {
   background: var(--paper);
+  /* Prevent zoom on iOS when in standalone/PWA mode */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   font-family: var(--font-sans);
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  /* Support notched phones in standalone mode */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* iOS PWA optimizations */
+@supports (padding: max(0px)) {
+  body {
+    padding-left: max(padding-left, env(safe-area-inset-left));
+    padding-right: max(padding-right, env(safe-area-inset-right));
+    padding-top: max(padding-top, env(safe-area-inset-top));
+    padding-bottom: max(padding-bottom, env(safe-area-inset-bottom));
+  }
+}
+
+/* Prevent double-tap zoom on iOS */
+button, a, input[type="button"], input[type="submit"] {
+  -webkit-touch-callout: none;
+}
+
+/* Prevent text selection on long press in PWA */
+body {
+  -webkit-user-select: none;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 /* Quiet number inputs: no spinners. */
