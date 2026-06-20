@@ -56,15 +56,15 @@ export function RoundsBoard({
   const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   // Standings: best player first in either direction.
   const sorted = [...players].sort((a, b) => (lowWins ? total(a) - total(b) : total(b) - total(a)));
-  // In UNO with target score: first to reach target LOSES (winner is lowest scorer)
+  // In UNO with target score: first player to reach target LOSES
   // In other games: best-ranked player wins
   const gameOver = players.some((p) => total(p) >= targetScore);
   let winner = null;
   if (gameOver && sorted.length > 0) {
     if (gameType === "uno" && !lowWins) {
-      // UNO: when someone reaches target, lowest scorer wins
-      const sortedByScore = [...players].sort((a, b) => total(a) - total(b));
-      winner = sortedByScore[0];
+      // UNO: the person who reached the target (highest score) is the loser
+      const sortedByScore = [...players].sort((a, b) => total(b) - total(a));
+      winner = sortedByScore[0]; // Highest scorer = first to reach target = loser
     } else {
       // Other games: best-ranked player wins
       winner = sorted[0];
@@ -191,13 +191,15 @@ export function RoundsBoard({
         </div>
 
         {winner && winner.initials && (
-          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+          <div className={`px-3 sm:px-4 py-2.5 border-b border-line ${
+            gameType === "uno" && !lowWins ? "bg-coral/20" : "bg-accent-soft"
+          }`}>
             <span className="font-display font-bold text-base">
-              🏆 {gameType === "uno" && !lowWins
-                ? `${winner.initials} survives with ${total(winner)}!`
+              {gameType === "uno" && !lowWins
+                ? `💔 ${winner.initials} busted at ${total(winner)}!`
                 : lowWins
-                ? `${winner.initials} wins low with ${total(winner)}!`
-                : `${winner.initials} takes it with ${total(winner)}!`}
+                ? `🏆 ${winner.initials} wins low with ${total(winner)}!`
+                : `🏆 ${winner.initials} takes it with ${total(winner)}!`}
             </span>
           </div>
         )}
