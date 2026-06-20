@@ -157,6 +157,11 @@ export default function App() {
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
     setTargetScore(GAME_DEFAULT_TARGET[type]);
+    // Auto-host: generate a PIN immediately so multiplayer is always ready
+    // (Custom games will host after setup completes)
+    if (type !== "custom") {
+      setTimeout(() => createGame(type), 0);
+    }
   };
 
   const createGame = async (type: GameType) => {
@@ -356,6 +361,8 @@ export default function App() {
         onStart={({ name, lowWins, target }) => {
           setCustomRules({ name, lowWins });
           setTargetScore(target);
+          // Auto-host after custom game setup
+          setTimeout(() => createGame("custom"), 0);
         }}
       />
     );
@@ -413,14 +420,7 @@ export default function App() {
                   <LogOut size={14} />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => createGame(gameType!)}
-                className="btn btn-accent px-4 py-2 text-sm"
-              >
-                Host a table
-              </button>
-            )}
+            ) : null}
             <button
               onClick={() => setShowArchive(true)}
               className="btn btn-white px-3.5 py-2 text-sm"
@@ -430,12 +430,6 @@ export default function App() {
           </div>
         </header>
 
-        {!pin && (
-          <p className="-mt-3 mb-6 text-[13px] text-ink/55 leading-relaxed max-w-md">
-            <span className="text-ink/85">Hosting a table</span> creates a shareable 4-digit
-            PIN so everyone can follow the sheet from their own phone.
-          </p>
-        )}
         {createError && (
           <p className="-mt-2 mb-5 text-sm font-semibold text-coral">
             Couldn&rsquo;t create a table just now — try again in a moment.

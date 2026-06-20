@@ -177,7 +177,7 @@ export function RoundsBoard({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span> of {maxRound}
             </span>
-            <span className="microcap">({playedHandsCount} scored)</span>
+            <span className="microcap">{playedHandsCount} completed</span>
           </div>
           <div className="flex items-center gap-3">
             <label className="microcap flex items-center gap-1.5">
