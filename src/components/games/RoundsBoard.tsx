@@ -175,7 +175,7 @@ export function RoundsBoard({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Round <span className="text-accent font-semibold">{currentRound + 1}</span> of {maxRound}
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
             <span className="microcap">{playedHandsCount} completed</span>
           </div>
