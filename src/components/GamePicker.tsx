@@ -44,7 +44,7 @@ const GAMES: {
     id: "uno",
     name: "UNO",
     tag: "Shed your hand",
-    desc: "Round scores add up — first to 500 takes it.",
+    desc: "Play cards matching color or number. First to 500 points LOSES and is out!",
     color: "var(--coral)",
     tilt: "hover:rotate-1",
   },
