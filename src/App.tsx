@@ -157,7 +157,7 @@ export default function App() {
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
     setTargetScore(GAME_DEFAULT_TARGET[type]);
-    setImmediate(() => createGame(type));
+    Promise.resolve().then(() => createGame(type));
   };
 
   const createGame = async (type: GameType) => {

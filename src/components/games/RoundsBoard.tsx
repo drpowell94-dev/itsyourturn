@@ -142,17 +142,6 @@ export function RoundsBoard({
     if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
   };
 
-  const setAllCurrentRoundToZero = () => {
-    setPlayers((p) =>
-      p.map((x) => {
-        const rounds = [...x.rounds];
-        while (rounds.length <= currentRound) rounds.push(null);
-        if (rounds[currentRound] === null) rounds[currentRound] = 0;
-        return { ...x, rounds };
-      }),
-    );
-  };
-
   const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
   const canPrev = roundOffset > 0;
   const goNext = () => {
