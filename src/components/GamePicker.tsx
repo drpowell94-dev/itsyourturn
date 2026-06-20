@@ -84,6 +84,33 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
   return (
     <div className="min-h-screen bg-paper flex justify-center px-5 py-10 sm:py-14">
       <div className="w-full max-w-xl fade-in">
+        {/* Join table — front and center */}
+        <section className="mb-10 card-pop p-4.5 sm:p-5">
+          <div className="microcap mb-3">Already have a table PIN?</div>
+          <div className="flex items-center gap-2.5">
+            <input
+              value={pinInput}
+              onChange={(e) => {
+                setPinInput(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setPinError(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && submitPin()}
+              inputMode="numeric"
+              placeholder="0000"
+              aria-label="Table PIN"
+              className={`w-30 font-mono font-semibold text-lg tracking-[0.3em] text-center bg-paper border-2 rounded-xl py-2.5 outline-none transition-colors placeholder:text-ink/25 focus:border-teal ${
+                pinError ? "border-coral" : "border-line"
+              }`}
+            />
+            <button onClick={submitPin} className="btn btn-accent px-5 py-2.5 text-sm">
+              Join table
+            </button>
+          </div>
+          {pinError && (
+            <p className="mt-2 text-xs font-semibold text-coral">A table PIN is 4–6 digits.</p>
+          )}
+        </section>
+
         <header className="text-center mb-10">
           {/* The two-cards mark */}
           <div aria-hidden className="relative h-16 w-16 mx-auto mb-5">
@@ -95,8 +122,7 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             It&rsquo;s your turn!
           </h1>
           <p className="text-ink/65 text-[15px] leading-relaxed max-w-md mx-auto">
-            Pick a game, rally the table, and watch every phone keep score together —
-            live, hand by hand.
+            Start a new game or join someone&rsquo;s table above.
           </p>
         </header>
 
@@ -198,32 +224,6 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             className="shrink-0 text-teal group-hover:translate-x-0.5 transition-transform"
           />
         </button>
-
-        <section className="mt-9 card-pop p-4.5 sm:p-5">
-          <div className="microcap mb-3">Joining someone&rsquo;s table?</div>
-          <div className="flex items-center gap-2.5">
-            <input
-              value={pinInput}
-              onChange={(e) => {
-                setPinInput(e.target.value.replace(/\D/g, "").slice(0, 6));
-                setPinError(false);
-              }}
-              onKeyDown={(e) => e.key === "Enter" && submitPin()}
-              inputMode="numeric"
-              placeholder="0000"
-              aria-label="Table PIN"
-              className={`w-30 font-mono font-semibold text-lg tracking-[0.3em] text-center bg-paper border-2 rounded-xl py-2.5 outline-none transition-colors placeholder:text-ink/25 focus:border-teal ${
-                pinError ? "border-coral" : "border-line"
-              }`}
-            />
-            <button onClick={submitPin} className="btn btn-accent px-5 py-2.5 text-sm">
-              Join table
-            </button>
-          </div>
-          {pinError && (
-            <p className="mt-2 text-xs font-semibold text-coral">A table PIN is 4–6 digits.</p>
-          )}
-        </section>
 
         <footer className="mt-10 flex flex-col items-center gap-3">
           <div aria-hidden className="flex items-center gap-2.5">

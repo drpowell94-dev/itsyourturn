@@ -50,12 +50,14 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
   const deviceId = getDeviceId();
   const applyingRemote = useRef(false);
   const skipNextSave = useRef(true);
   const lastSyncedAt = useRef<string>("");
   const applyRef = useRef<(s: any, u?: string) => void>(() => {});
   const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const winnerSavedRef = useRef<string | null>(null);
 
   // Read pin from URL on mount.
   useEffect(() => {
@@ -221,6 +223,7 @@ export default function App() {
     setMaxRound(3);
     setTargetScore(200);
     sessionIdRef.current = crypto.randomUUID();
+    winnerSavedRef.current = null;
   };
 
   const isHost = Boolean(!pin || (hostId && hostId === deviceId));
@@ -232,16 +235,18 @@ export default function App() {
   };
 
   const addPlayerFromClaim = () => {
+    if (!newPlayerName.trim()) return;
     setPlayers((p) => [
       ...p,
       {
         id: crypto.randomUUID(),
-        initials: "",
+        initials: newPlayerName.trim().toUpperCase().slice(0, 3),
         rounds: Array(maxRound).fill(null),
         phase: gameType === "phase10" ? 1 : undefined,
         ownerId: pin ? deviceId : null,
       },
     ]);
+    setNewPlayerName("");
     if (pin) setShowClaim(false);
   };
 
@@ -249,6 +254,7 @@ export default function App() {
     // Boards persist via onWinner; manual new-game resets just clear local
     // state (history already includes prior wins).
     sessionIdRef.current = crypto.randomUUID();
+    winnerSavedRef.current = null;
     setPlayers([]);
     setMaxRound(3);
   };
@@ -258,6 +264,8 @@ export default function App() {
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
+    if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
+    if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
       sessionId: sessionIdRef.current,
       targetScore,
@@ -265,6 +273,7 @@ export default function App() {
       winner: winnerInitials,
     });
     if (pin) {
+      const completed_at = new Date().toISOString();
       supabase
         .from("game_history")
         .upsert(
@@ -275,7 +284,7 @@ export default function App() {
             target_score: targetScore,
             players: playersPayload,
             game_type: gameType,
-            completed_at: new Date().toISOString(),
+            completed_at,
           },
           { onConflict: "pin,session_id" },
         )
@@ -484,6 +493,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
+            gameType={gameType}
           />
         )}
       </div>
@@ -520,11 +530,26 @@ export default function App() {
                 })}
               </div>
             )}
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
+                Your name
+              </label>
+              <input
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value.toUpperCase().slice(0, 3))}
+                onKeyDown={(e) => e.key === "Enter" && addPlayerFromClaim()}
+                placeholder="ABC"
+                maxLength={3}
+                aria-label="Enter your name (initials)"
+                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 transition-colors"
+              />
+            </div>
             <button
               onClick={addPlayerFromClaim}
-              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5"
+              disabled={!newPlayerName.trim()}
+              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
-              <Plus size={15} /> I&rsquo;m new here
+              <Plus size={15} /> Join
             </button>
             <button
               onClick={() => setShowClaim(false)}
