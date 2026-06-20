@@ -133,9 +133,9 @@ export function Flip7Board({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">Played {playedHandsCount}</span>
+            <span className="microcap">{playedHandsCount} completed</span>
           </div>
           <div className="flex items-center gap-3">
             <label className="microcap flex items-center gap-1.5">
