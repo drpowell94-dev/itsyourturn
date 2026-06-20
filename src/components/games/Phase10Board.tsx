@@ -35,6 +35,9 @@ export function Phase10Board({
   players, setPlayers, maxRound, setMaxRound, canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [confirmNewRound, setConfirmNewRound] = useState(false);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -67,11 +70,26 @@ export function Phase10Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
 
-  const addPlayer = () =>
+  const confirmAddPlayer = () => {
+    if (!newPlayerInitials.trim()) return;
     setPlayers((p) => [
       ...p,
-      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), phase: 1, ownerId: ownerIdForNew },
+      { id: crypto.randomUUID(), initials: newPlayerInitials.toUpperCase().slice(0, 3), rounds: Array(maxRound).fill(null), phase: 1, ownerId: ownerIdForNew },
     ]);
+    setNewPlayerInitials("");
+    setAddingPlayer(false);
+  };
+
+  const setAllCurrentRoundToZero = () => {
+    setPlayers((p) =>
+      p.map((x) => {
+        const rounds = [...x.rounds];
+        while (rounds.length <= currentRound) rounds.push(null);
+        if (rounds[currentRound] === null) rounds[currentRound] = 0;
+        return { ...x, rounds };
+      }),
+    );
+  };
 
   const removePlayer = (id: string) =>
     setPlayers((p) => {
@@ -157,9 +175,9 @@ export function Phase10Board({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">Played {playedHandsCount}</span>
+            <span className="microcap">{playedHandsCount} completed</span>
           </div>
           <span className="microcap">Clear all 10 phases</span>
         </div>
@@ -262,20 +280,27 @@ export function Phase10Board({
                   </span>
                   <div className={roundsGrid}>
                     <span />
-                    {visibleRounds.map((r) => (
-                      <input
-                        key={r}
-                        type="text"
-                        inputMode="numeric"
-                        value={pl.rounds[r] ?? ""}
-                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
-                        onFocus={selectOnFocus}
-                        readOnly={!canEdit(pl)}
-                        placeholder="–"
-                        aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
-                      />
-                    ))}
+                    {visibleRounds.map((r) => {
+                      const isCurrentRound = r === currentRound;
+                      return (
+                        <input
+                          key={r}
+                          type="text"
+                          inputMode="numeric"
+                          value={pl.rounds[r] ?? ""}
+                          onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                          onFocus={selectOnFocus}
+                          readOnly={!canEdit(pl)}
+                          placeholder="–"
+                          aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
+                          className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
+                            isCurrentRound
+                              ? "bg-accent-soft border-accent focus:border-accent"
+                              : "bg-paper border-line focus:border-accent"
+                          }`}
+                        />
+                      );
+                    })}
                     <span />
                   </div>
                   <button
@@ -299,17 +324,67 @@ export function Phase10Board({
         )}
       />
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
-          New round
+      <div className="grid grid-cols-3 gap-2 mt-5">
+        <button
+          onClick={setAllCurrentRoundToZero}
+          className="btn btn-white py-2.5 text-sm"
+          title="Set all players to 0 for this round"
+        >
+          All 0
         </button>
         <button
-          onClick={addPlayer}
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+          className={`btn py-2.5 text-sm ${
+            confirmNewRound
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewRound ? "Sure?" : "New round"}
+        </button>
+        <button
+          onClick={() => setAddingPlayer(true)}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
-          <Plus size={15} /> Add player
+          <Plus size={15} /> Add
         </button>
       </div>
+
+      {addingPlayer && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Player name</h2>
+            <input
+              type="text"
+              value={newPlayerInitials}
+              onChange={(e) => setNewPlayerInitials(e.target.value.toUpperCase().slice(0, 3))}
+              onKeyDown={(e) => e.key === "Enter" && confirmAddPlayer()}
+              autoFocus
+              placeholder="ABC"
+              maxLength={3}
+              className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 mb-4 transition-colors"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmAddPlayer}
+                disabled={!newPlayerInitials.trim()}
+                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setAddingPlayer(false);
+                  setNewPlayerInitials("");
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Calculator
         config={CALC_CONFIGS.phase10!}
