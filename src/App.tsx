@@ -493,7 +493,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
-            gameType={gameType}
+            gameType={gameType ?? undefined}
           />
         )}
       </div>
