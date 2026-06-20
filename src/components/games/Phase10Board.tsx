@@ -79,6 +79,17 @@ export function Phase10Board({
     setAddingPlayer(false);
   };
 
+  const setAllCurrentRoundToZero = () => {
+    setPlayers((p) =>
+      p.map((x) => {
+        const rounds = [...x.rounds];
+        while (rounds.length <= currentRound) rounds.push(null);
+        if (rounds[currentRound] === null) rounds[currentRound] = 0;
+        return { ...x, rounds };
+      }),
+    );
+  };
+
   const removePlayer = (id: string) =>
     setPlayers((p) => {
       const t = p.find((x) => x.id === id);
@@ -305,7 +316,14 @@ export function Phase10Board({
         )}
       />
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
+      <div className="grid grid-cols-3 gap-2 mt-5">
+        <button
+          onClick={setAllCurrentRoundToZero}
+          className="btn btn-white py-2.5 text-sm"
+          title="Set all players to 0 for this round"
+        >
+          All 0
+        </button>
         <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
           New round
         </button>
@@ -313,7 +331,7 @@ export function Phase10Board({
           onClick={() => setAddingPlayer(true)}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
-          <Plus size={15} /> Add player
+          <Plus size={15} /> Add
         </button>
       </div>
 
