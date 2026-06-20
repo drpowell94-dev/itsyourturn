@@ -44,6 +44,7 @@ export function RoundsBoard({
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewRound, setConfirmNewRound] = useState(false);
+  const [newPlayerInitials, setNewPlayerInitials] = useState("");
 
   // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
   useEffect(() => {
@@ -83,11 +84,14 @@ export function RoundsBoard({
     if (!winner) savedWinnerRef.current = null;
   }, [winner?.id, onWinner, sorted]);
 
-  const addPlayer = () =>
+  const addPlayer = () => {
+    if (!newPlayerInitials.trim()) return;
     setPlayers((p) => [
       ...p,
-      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
+      { id: crypto.randomUUID(), initials: newPlayerInitials.toUpperCase().slice(0, 3), rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
     ]);
+    setNewPlayerInitials("");
+  };
 
   const removePlayer = (id: string) =>
     setPlayers((p) => {
@@ -316,30 +320,42 @@ export function RoundsBoard({
         )}
       />
 
-      <div className="grid grid-cols-3 gap-2 mt-5">
-        <button
-          onClick={setAllCurrentRoundToZero}
-          className="btn btn-white py-2.5 text-sm"
-          title="Set all players to 0 for this round"
-        >
-          All 0
-        </button>
-        <button
-          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
-          className={`btn py-2.5 text-sm ${
-            confirmNewRound
-              ? "bg-coral text-white border-coral"
-              : "btn-white"
-          }`}
-        >
-          {confirmNewRound ? "Sure?" : "New round"}
-        </button>
-        <button
-          onClick={addPlayer}
-          className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
-        >
-          <Plus size={15} /> Add
-        </button>
+      <div className="space-y-2 mt-5">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={setAllCurrentRoundToZero}
+            className="btn btn-white py-2.5 text-sm"
+            title="Set all players to 0 for this round"
+          >
+            All 0
+          </button>
+          <button
+            onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+            className={`btn py-2.5 text-sm ${
+              confirmNewRound
+                ? "bg-coral text-white border-coral"
+                : "btn-white"
+            }`}
+          >
+            {confirmNewRound ? "Sure?" : "New round"}
+          </button>
+          <button
+            onClick={addPlayer}
+            disabled={!newPlayerInitials.trim()}
+            className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-40"
+          >
+            <Plus size={15} /> Add
+          </button>
+        </div>
+        <input
+          type="text"
+          value={newPlayerInitials}
+          onChange={(e) => setNewPlayerInitials(e.target.value.toUpperCase().slice(0, 3))}
+          onKeyDown={(e) => e.key === "Enter" && addPlayer()}
+          placeholder="Player name (ABC)"
+          maxLength={3}
+          className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2.5 transition-colors"
+        />
       </div>
 
       {calcConfig && (
