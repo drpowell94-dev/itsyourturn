@@ -174,17 +174,15 @@ export function RoundsBoard({
             </span>
             <span className="microcap">{playedHandsCount} completed</span>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="microcap flex items-center gap-1.5">
-              {lowWins ? "Ends at" : "To"}
-              <TargetInput
-                value={targetScore}
-                onCommit={setTargetScore}
-                maxDigits={5}
-                className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-              />
-            </label>
-          </div>
+          <label className="microcap flex items-center gap-1.5">
+            {lowWins ? "Ends at" : "To"}
+            <TargetInput
+              value={targetScore}
+              onCommit={setTargetScore}
+              maxDigits={5}
+              className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+            />
+          </label>
         </div>
 
         {winner && winner.initials && (

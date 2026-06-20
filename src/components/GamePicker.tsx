@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { ArrowRight, HelpCircle, X } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import type { GameType } from "@/lib/games";
-import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 type Props = {
   onSelect: (type: GameType) => void;
@@ -45,7 +44,7 @@ const GAMES: {
     id: "uno",
     name: "UNO",
     tag: "Shed your hand",
-    desc: "Round scores add up — first to 500 takes it.",
+    desc: "Play cards matching color or number. First to 500 points LOSES and is out!",
     color: "var(--coral)",
     tilt: "hover:rotate-1",
   },
@@ -70,7 +69,6 @@ const GAMES: {
 export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState(false);
-  const [selectedGameForInstructions, setSelectedGameForInstructions] = useState<GameType | null>(null);
 
   const submitPin = () => {
     const p = pinInput.trim();
@@ -95,13 +93,12 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             It&rsquo;s your turn!
           </h1>
           <p className="text-ink/65 text-[15px] leading-relaxed max-w-md mx-auto">
-            Pick a game, rally the table, and watch every phone keep score together —
-            live, hand by hand.
+            Start a new game or join a table below.
           </p>
         </header>
 
-        {/* Join table — above games but below title */}
-        <section className="mb-7 card-pop p-4.5 sm:p-5">
+        {/* Join table */}
+        <section className="mb-10 card-pop p-4.5 sm:p-5">
           <div className="microcap mb-3">Already have a table PIN?</div>
           <div className="flex items-center gap-2.5">
             <input
@@ -129,75 +126,35 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
 
         <section aria-label="Choose a game" className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
           {GAMES.map((g) => (
-            <div
+            <button
               key={g.id}
-              className={`group card-pop p-4.5 sm:p-5 relative transition-transform duration-150 hover:-translate-y-1 ${g.tilt}`}
+              onClick={() => onSelect(g.id)}
+              className={`group card-pop p-4.5 sm:p-5 text-left transition-transform duration-150 hover:-translate-y-1 ${g.tilt} outline-none focus-visible:ring-2 focus-visible:ring-offset-2`}
+              style={{ "--tw-ring-color": g.color } as React.CSSProperties}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedGameForInstructions(selectedGameForInstructions === g.id ? null : g.id);
-                }}
-                className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-ink/5 hover:bg-ink/15 text-ink/60 hover:text-ink/85 transition-all"
-                aria-label={`Instructions for ${g.name}`}
+              <div
+                aria-hidden
+                className="h-9 w-9 rounded-lg border-[3px] bg-surface -rotate-6 group-hover:rotate-3 transition-transform mb-3"
+                style={{ borderColor: g.color }}
+              />
+              <div className="font-display font-bold text-2xl leading-tight mb-0.5">
+                {g.name}
+              </div>
+              <div
+                className="font-display font-bold text-[10px] tracking-[0.14em] uppercase mb-2"
+                style={{ color: g.color }}
               >
-                <HelpCircle size={20} />
-              </button>
-
-              {selectedGameForInstructions === g.id && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center p-3">
-                  <div className="bg-surface rounded-xl border-2 border-line shadow-lg fade-in p-4 w-full">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <span className="font-display font-bold text-lg leading-tight">
-                        {g.name}
-                      </span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedGameForInstructions(null);
-                        }}
-                        className="flex-shrink-0 text-ink/50 hover:text-ink/75 transition-colors mt-0.5"
-                        aria-label="Close"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                    <p className="text-[13px] leading-relaxed text-ink/75">
-                      {GAME_INSTRUCTIONS[g.id]}
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              <button
-                onClick={() => onSelect(g.id)}
-                className="w-full text-left outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-                style={{ "--tw-ring-color": g.color } as React.CSSProperties}
+                {g.tag}
+              </div>
+              <div className="text-[13px] text-ink/65 leading-snug">{g.desc}</div>
+              <div
+                className="mt-3 flex items-center gap-1 font-display font-bold text-xs"
+                style={{ color: g.color }}
               >
-                <div
-                  aria-hidden
-                  className="h-9 w-9 rounded-lg border-[3px] bg-surface -rotate-6 group-hover:rotate-3 transition-transform mb-3"
-                  style={{ borderColor: g.color }}
-                />
-                <div className="font-display font-bold text-2xl leading-tight mb-0.5">
-                  {g.name}
-                </div>
-                <div
-                  className="font-display font-bold text-[10px] tracking-[0.14em] uppercase mb-2"
-                  style={{ color: g.color }}
-                >
-                  {g.tag}
-                </div>
-                <div className="text-[13px] text-ink/65 leading-snug">{g.desc}</div>
-                <div
-                  className="mt-3 flex items-center gap-1 font-display font-bold text-xs"
-                  style={{ color: g.color }}
-                >
-                  Deal me in
-                  <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </button>
-            </div>
+                Deal me in
+                <ArrowRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
+              </div>
+            </button>
           ))}
         </section>
 
@@ -242,7 +199,6 @@ export function GamePicker({ onSelect, onJoin, onArchive }: Props) {
             Past games
           </button>
         </footer>
-
       </div>
     </div>
   );

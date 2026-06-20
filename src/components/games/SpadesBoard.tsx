@@ -56,6 +56,7 @@ export function SpadesBoard({
   canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [confirmNewGame, setConfirmNewGame] = useState(false);
 
   // Ensure fixed Team A / Team B exist. Spades is team-based, so we don't
   // allow add/remove. If the session arrives empty (fresh game), seed it.
@@ -295,16 +296,14 @@ export function SpadesBoard({
             </span>
             <span className="microcap">{playedRounds.length} completed</span>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="microcap flex items-center gap-1.5">
-              To
-              <TargetInput
-                value={targetScore}
-                onCommit={setTargetScore}
-                className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-              />
-            </label>
-          </div>
+          <label className="microcap flex items-center gap-1.5">
+            To
+            <TargetInput
+              value={targetScore}
+              onCommit={setTargetScore}
+              className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+            />
+          </label>
         </div>
 
         {winner && winner.initials && (
@@ -440,8 +439,15 @@ export function SpadesBoard({
       </section>
 
       <div className="mt-5">
-        <button onClick={onNewGame} className="btn btn-white w-full py-2.5 text-sm">
-          New game
+        <button
+          onClick={() => confirmNewGame ? (onNewGame(), setConfirmNewGame(false)) : setConfirmNewGame(true)}
+          className={`btn w-full py-2.5 text-sm ${
+            confirmNewGame
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewGame ? "Sure?" : "New game"}
         </button>
       </div>
 

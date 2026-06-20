@@ -39,6 +39,7 @@ export function Flip7Board({
   const [roundOffset, setRoundOffset] = useState(0);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [confirmNewRound, setConfirmNewRound] = useState(false);
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -237,20 +238,27 @@ export function Flip7Board({
                   </span>
                   <div className={roundsGrid}>
                     <span />
-                    {visibleRounds.map((r) => (
-                      <input
-                        key={r}
-                        type="text"
-                        inputMode="numeric"
-                        value={pl.rounds[r] ?? ""}
-                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
-                        onFocus={selectOnFocus}
-                        readOnly={!canEdit(pl)}
-                        placeholder="–"
-                        aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
-                      />
-                    ))}
+                    {visibleRounds.map((r) => {
+                      const isCurrentRound = r === currentRound;
+                      return (
+                        <input
+                          key={r}
+                          type="text"
+                          inputMode="numeric"
+                          value={pl.rounds[r] ?? ""}
+                          onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                          onFocus={selectOnFocus}
+                          readOnly={!canEdit(pl)}
+                          placeholder="–"
+                          aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
+                          className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
+                            isCurrentRound
+                              ? "bg-accent-soft border-accent focus:border-accent"
+                              : "bg-paper border-line focus:border-accent"
+                          }`}
+                        />
+                      );
+                    })}
                     <span />
                   </div>
                   <button
@@ -278,8 +286,15 @@ export function Flip7Board({
         >
           All 0
         </button>
-        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
-          New round
+        <button
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+          className={`btn py-2.5 text-sm ${
+            confirmNewRound
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewRound ? "Sure?" : "New round"}
         </button>
         <button
           onClick={() => setAddingPlayer(true)}
