@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, Copy, Check, LogOut, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
 import {
@@ -51,7 +51,6 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
-  const [joinInput, setJoinInput] = useState("");
   const deviceId = getDeviceId();
   const applyingRemote = useRef(false);
   const skipNextSave = useRef(true);
@@ -203,7 +202,6 @@ export default function App() {
   const joinGame = (p: string) => {
     window.history.replaceState(null, "", `?pin=${p}`);
     setShowArchive(false);
-    setJoinInput("");
     setPin(p);
   };
 
@@ -394,7 +392,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {pin && (
+            {pin ? (
               <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
                 <span className="microcap">Table</span>
                 <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
@@ -416,6 +414,13 @@ export default function App() {
                   <LogOut size={14} />
                 </button>
               </div>
+            ) : (
+              <button
+                onClick={() => createGame(gameType!)}
+                className="btn btn-accent px-4 py-2 text-sm"
+              >
+                Host a table
+              </button>
             )}
             <button
               onClick={() => setShowArchive(true)}
@@ -427,30 +432,10 @@ export default function App() {
         </header>
 
         {!pin && (
-          <div className="mb-6 flex items-end gap-2">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
-                Join a table
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="4-digit PIN"
-                maxLength={6}
-                value={joinInput}
-                onChange={(e) => setJoinInput(e.target.value.replace(/\D/g, ''))}
-                onKeyDown={(e) => e.key === "Enter" && joinInput.length >= 4 && joinGame(joinInput)}
-                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2.5 transition-colors"
-              />
-            </div>
-            <button
-              onClick={() => joinGame(joinInput)}
-              disabled={joinInput.length < 4}
-              className="btn btn-accent px-4 py-2.5 text-sm disabled:opacity-40 flex items-center gap-1.5"
-            >
-              <ArrowRight size={14} /> Join
-            </button>
-          </div>
+          <p className="-mt-3 mb-6 text-[13px] text-ink/55 leading-relaxed max-w-md">
+            <span className="text-ink/85">Hosting a table</span> creates a shareable 4-digit
+            PIN so everyone can follow the sheet from their own phone.
+          </p>
         )}
         {createError && (
           <p className="-mt-2 mb-5 text-sm font-semibold text-coral">
