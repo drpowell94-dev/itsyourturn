@@ -94,7 +94,7 @@ export function Flip7Board({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, roundOffset, players, pendingMissing]);
+  }, [currentRound, players, pendingMissing]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -307,7 +307,7 @@ export function Flip7Board({
               : "btn-white"
           }`}
         >
-          {confirmNewRound ? "Sure?" : "New game"}
+          {confirmNewRound ? "Confirm?" : "New game"}
         </button>
         <button
           onClick={() => setAddingPlayer(true)}

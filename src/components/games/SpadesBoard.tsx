@@ -447,7 +447,7 @@ export function SpadesBoard({
               : "btn-white"
           }`}
         >
-          {confirmNewGame ? "Sure?" : "New game"}
+          {confirmNewGame ? "Confirm?" : "New game"}
         </button>
       </div>
 

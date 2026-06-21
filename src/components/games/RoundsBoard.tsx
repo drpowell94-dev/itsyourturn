@@ -121,7 +121,7 @@ export function RoundsBoard({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, roundOffset, players, pendingMissing]);
+  }, [currentRound, players, pendingMissing]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -332,7 +332,7 @@ export function RoundsBoard({
               : "btn-white"
           }`}
         >
-          {confirmNewRound ? "Sure?" : "New game"}
+          {confirmNewRound ? "Confirm?" : "New game"}
         </button>
         <button
           onClick={() => setAddingPlayer(true)}
