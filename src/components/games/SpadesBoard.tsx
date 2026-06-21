@@ -57,6 +57,8 @@ export function SpadesBoard({
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
+  const [showMissingScoresDialog, setShowMissingScoresDialog] = useState(false);
+  const [missingScoresRound, setMissingScoresRound] = useState<number | null>(null);
   const prevCurrentRoundRef = useRef(-1);
 
   // Ensure fixed Team A / Team B exist. Spades is team-based, so we don't
@@ -194,14 +196,26 @@ export function SpadesBoard({
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
   }, [currentRound, maxRound, setMaxRound]);
 
-  // Auto-scroll to keep current round visible
+  // Auto-scroll to keep current round visible and detect missing scores
   useEffect(() => {
     if (currentRound !== prevCurrentRoundRef.current) {
+      const prevRound = prevCurrentRoundRef.current;
       prevCurrentRoundRef.current = currentRound;
+
+      // Check if previous round had any entries but wasn't fully finalized
+      if (prevRound >= 0 && players.length === 2) {
+        const prev = players[0].rounds[prevRound] ?? null;
+        const curr = players[1].rounds[prevRound] ?? null;
+        if ((prev !== null || curr !== null) && (prev === null || curr === null)) {
+          setMissingScoresRound(prevRound);
+          setShowMissingScoresDialog(true);
+        }
+      }
+
       const newOffset = Math.max(0, currentRound - 1);
       setRoundOffset(newOffset);
     }
-  }, [currentRound]);
+  }, [currentRound, players]);
 
   const playedRounds = (() => {
     const out: number[] = [];
@@ -216,6 +230,20 @@ export function SpadesBoard({
     const next = Math.max(0, Math.min(TRICKS_PER_HAND, cur + delta));
     if (kind === "bid") updateBid(id, round, String(next));
     else updateTricks(id, round, String(next));
+  };
+
+  const setAllCurrentRoundToZero = () => {
+    setPlayers((p) =>
+      p.map((team) => {
+        const bids = [...(team.bids ?? [])];
+        const tricks = [...(team.tricks ?? [])];
+        while (bids.length <= currentRound) bids.push(null);
+        while (tricks.length <= currentRound) tricks.push(null);
+        if (bids[currentRound] === null) bids[currentRound] = 0;
+        if (tricks[currentRound] === null) tricks[currentRound] = 0;
+        return { ...team, bids, tricks };
+      }),
+    );
   };
 
   const trickSum = roundTrickSum(currentRound);
@@ -462,6 +490,34 @@ export function SpadesBoard({
           {confirmNewGame ? "Sure?" : "New game"}
         </button>
       </div>
+
+      {showMissingScoresDialog && missingScoresRound !== null && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-3">Round {missingScoresRound + 1}</h2>
+            <p className="text-sm text-ink/70 mb-4">
+              One team hasn&rsquo;t entered their scores. Record 0 for them?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowMissingScoresDialog(false);
+                  setAllCurrentRoundToZero();
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Record 0
+              </button>
+              <button
+                onClick={() => setShowMissingScoresDialog(false)}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Wait
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Confetti active={!!winner} />
     </>

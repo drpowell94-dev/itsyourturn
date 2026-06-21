@@ -46,6 +46,8 @@ export function RoundsBoard({
   const [confirmNewRound, setConfirmNewRound] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [showMissingScoresDialog, setShowMissingScoresDialog] = useState(false);
+  const [missingScoresRound, setMissingScoresRound] = useState<number | null>(null);
   const prevCurrentRoundRef = useRef(-1);
 
   // Reset round offset when starting a new game
@@ -89,11 +91,20 @@ export function RoundsBoard({
   // Auto-scroll to keep current round visible
   useEffect(() => {
     const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+    const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+
     let curr = 0;
     while (roundHasAnyEntry(curr)) curr++;
 
     if (curr !== prevCurrentRoundRef.current) {
+      const prevRound = prevCurrentRoundRef.current;
       prevCurrentRoundRef.current = curr;
+
+      if (prevRound >= 0 && roundHasAnyEntry(prevRound) && !roundIsComplete(prevRound)) {
+        setMissingScoresRound(prevRound);
+        setShowMissingScoresDialog(true);
+      }
+
       const newOffset = Math.max(0, curr - 1);
       setRoundOffset(newOffset);
     }
@@ -107,6 +118,21 @@ export function RoundsBoard({
     ]);
     setNewPlayerInitials("");
     setAddingPlayer(false);
+  };
+
+  const setAllCurrentRoundToZero = () => {
+    const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+    let curr = 0;
+    while (roundHasAnyEntry(curr)) curr++;
+
+    setPlayers((p) =>
+      p.map((x) => {
+        const rounds = [...x.rounds];
+        while (rounds.length <= curr) rounds.push(null);
+        if (rounds[curr] === null) rounds[curr] = 0;
+        return { ...x, rounds };
+      }),
+    );
   };
 
   const removePlayer = (id: string) =>
@@ -381,6 +407,34 @@ export function RoundsBoard({
                 className="btn btn-white flex-1 py-2.5 text-sm"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMissingScoresDialog && missingScoresRound !== null && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-3">Round {missingScoresRound + 1}</h2>
+            <p className="text-sm text-ink/70 mb-4">
+              Some players haven&rsquo;t entered their score. Record 0 for them?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setAllCurrentRoundToZero();
+                  setShowMissingScoresDialog(false);
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Record 0
+              </button>
+              <button
+                onClick={() => setShowMissingScoresDialog(false)}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Wait
               </button>
             </div>
           </div>

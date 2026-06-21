@@ -415,7 +415,7 @@ export default function App() {
                         className="fixed inset-0 z-40"
                         onClick={() => setShowMenu(false)}
                       />
-                      <div className="absolute right-0 top-full mt-1 z-50 bg-surface border-2 border-line rounded-xl shadow-lg min-w-48">
+                      <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-1 z-50 bg-surface border-2 border-line rounded-xl shadow-lg min-w-48">
                         <div className="divide-y divide-line">
                           <button
                             onClick={() => {
