@@ -306,6 +306,7 @@ export function RoundsBoard({
           players.map((p) => ({ initials: p.initials, total: total(p) })),
           targetScore,
           lowWins,
+          gameType,
         )}
       />
 
