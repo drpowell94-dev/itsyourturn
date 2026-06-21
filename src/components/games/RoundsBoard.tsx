@@ -49,6 +49,7 @@ export function RoundsBoard({
   const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
   const prevRoundRef = useRef<number>(-1);
   const showDialogRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
   useEffect(() => {
@@ -95,7 +96,11 @@ export function RoundsBoard({
 
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
+    // Blur focused input when moving to next round
     if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+      if (inputRef.current && inputRef.current === document.activeElement) {
+        inputRef.current.blur();
+      }
       const prevRound = prevRoundRef.current;
       const missing = players
         .filter((p) => p.rounds[prevRound] == null)
@@ -285,6 +290,7 @@ export function RoundsBoard({
                       return (
                         <input
                           key={r}
+                          ref={isCurrentRound ? inputRef : null}
                           type="text"
                           inputMode="numeric"
                           value={pl.rounds[r] ?? ""}

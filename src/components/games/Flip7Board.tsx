@@ -43,6 +43,7 @@ export function Flip7Board({
   const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
   const prevRoundRef = useRef<number>(-1);
   const showDialogRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -68,7 +69,11 @@ export function Flip7Board({
 
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
+    // Blur focused input when moving to next round
     if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+      if (inputRef.current && inputRef.current === document.activeElement) {
+        inputRef.current.blur();
+      }
       const prevRound = prevRoundRef.current;
       const missing = players
         .filter((p) => p.rounds[prevRound] == null)
@@ -260,6 +265,7 @@ export function Flip7Board({
                       return (
                         <input
                           key={r}
+                          ref={isCurrentRound ? inputRef : null}
                           type="text"
                           inputMode="numeric"
                           value={pl.rounds[r] ?? ""}

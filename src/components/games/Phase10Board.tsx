@@ -41,6 +41,7 @@ export function Phase10Board({
   const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
   const prevRoundRef = useRef<number>(-1);
   const showDialogRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -80,7 +81,11 @@ export function Phase10Board({
 
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
+    // Blur focused input when moving to next round
     if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+      if (inputRef.current && inputRef.current === document.activeElement) {
+        inputRef.current.blur();
+      }
       const prevRound = prevRoundRef.current;
       const missing = players
         .filter((p) => p.rounds[prevRound] == null)
@@ -303,6 +308,7 @@ export function Phase10Board({
                       return (
                         <input
                           key={r}
+                          ref={isCurrentRound ? inputRef : null}
                           type="text"
                           inputMode="numeric"
                           value={pl.rounds[r] ?? ""}
