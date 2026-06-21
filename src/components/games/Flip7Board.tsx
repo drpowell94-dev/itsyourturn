@@ -218,7 +218,7 @@ export function Flip7Board({
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
             {visibleRounds.map((r) => (
-              <span key={r} className="microcap text-center">R{r + 1}</span>
+              <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
           </div>
           <span />
