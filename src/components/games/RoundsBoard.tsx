@@ -190,7 +190,7 @@ export function RoundsBoard({
   };
 
   const visibleRounds = Array.from(
-    { length: Math.min(VISIBLE_ROUNDS, Math.max(1, maxRound + 1 - roundOffset)) },
+    { length: Math.min(VISIBLE_ROUNDS, Math.max(1, maxRound - roundOffset)) },
     (_, i) => roundOffset + i
   );
 
