@@ -40,6 +40,7 @@ export function Phase10Board({
   const [confirmNewRound, setConfirmNewRound] = useState(false);
   const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
   const prevRoundRef = useRef<number>(-1);
+  const showDialogRef = useRef(false);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -86,10 +87,16 @@ export function Phase10Board({
         .map((p) => p.id);
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
+        showDialogRef.current = false;
         return;
       }
     }
     prevRoundRef.current = currentRound;
+
+    // Show dialog when first score is entered in new round
+    if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
+      showDialogRef.current = true;
+    }
 
     // Auto-scroll to keep current round visible
     const visibleStart = roundOffset;
@@ -99,7 +106,7 @@ export function Phase10Board({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, roundOffset]);
+  }, [currentRound, roundOffset, players, pendingMissing]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -414,7 +421,7 @@ export function Phase10Board({
         </div>
       )}
 
-      {pendingMissing && (
+      {pendingMissing && showDialogRef.current && (
         <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
             <h2 className="font-display font-bold text-2xl mb-4">Record 0 for missing scores?</h2>
@@ -445,6 +452,7 @@ export function Phase10Board({
                     }),
                   );
                   setPendingMissing(null);
+                  showDialogRef.current = false;
                   prevRoundRef.current = currentRound;
                 }}
                 className="btn btn-accent flex-1 py-2.5 text-sm"
@@ -452,7 +460,10 @@ export function Phase10Board({
                 Record 0 & continue
               </button>
               <button
-                onClick={() => setPendingMissing(null)}
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                }}
                 className="btn btn-white flex-1 py-2.5 text-sm"
               >
                 Cancel
