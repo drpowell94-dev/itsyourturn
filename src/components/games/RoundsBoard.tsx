@@ -114,7 +114,7 @@ export function RoundsBoard({
 
     // Grow maxRound if needed
     if (currentRound >= maxRound) {
-      setMaxRound(currentRound + 1);
+      setMaxRound((m) => Math.max(m, currentRound + 1));
     }
 
     // Auto-scroll to keep current round visible
