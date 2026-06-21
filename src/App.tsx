@@ -275,7 +275,7 @@ export default function App() {
       players: playersPayload,
       winner: winnerInitials,
     });
-    if (pin) {
+    if (pin && isHost) {
       const completed_at = new Date().toISOString();
       supabase
         .from("game_history")
