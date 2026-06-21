@@ -57,6 +57,9 @@ export function SpadesBoard({
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
+  const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
+  const prevRoundRef = useRef<number>(-1);
+  const showDialogRef = useRef(false);
 
   // Ensure fixed Team A / Team B exist. Spades is team-based, so we don't
   // allow add/remove. If the session arrives empty (fresh game), seed it.
@@ -187,9 +190,33 @@ export function SpadesBoard({
   // The "current hand" is the first non-finalized round at/after roundOffset.
   let currentRound = roundOffset;
   while (roundIsFinalized(currentRound)) currentRound++;
+  // Check for incomplete rounds and handle missing scores confirmation
   useEffect(() => {
+    if (players.length !== 2) return;
+
+    if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+      const prevRound = prevRoundRef.current;
+      const missing = players
+        .filter((p) => {
+          const bid = p.bids?.[prevRound] ?? null;
+          const tricks = p.tricks?.[prevRound] ?? null;
+          return bid === null || tricks === null;
+        })
+        .map((p) => p.id);
+      if (missing.length > 0) {
+        setPendingMissing({ round: prevRound, playerIds: missing });
+        showDialogRef.current = false;
+      }
+    }
+    prevRoundRef.current = currentRound;
+
+    // Show dialog when first entry is made in new round
+    if (pendingMissing && !showDialogRef.current && roundIsFinalized(currentRound)) {
+      showDialogRef.current = true;
+    }
+
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
-  }, [currentRound, maxRound, setMaxRound]);
+  }, [currentRound, players, pendingMissing, maxRound, setMaxRound]);
 
   const playedRounds = (() => {
     const out: number[] = [];
@@ -450,6 +477,38 @@ export function SpadesBoard({
           {confirmNewGame ? "Confirm?" : "New game"}
         </button>
       </div>
+
+      {pendingMissing && showDialogRef.current && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Record bids and tricks for missing team?</h2>
+            <p className="text-sm text-ink/60 mb-4">
+              {players.find((p) => pendingMissing.playerIds.includes(p.id))?.initials || "A team"} hasn't entered their bid and tricks for Round {pendingMissing.round + 1}. Continue anyway?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Continue anyway
+              </button>
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                  prevRoundRef.current = -1;
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Confetti active={!!winner} />
     </>
