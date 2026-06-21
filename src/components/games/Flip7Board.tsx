@@ -40,6 +40,7 @@ export function Flip7Board({
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
   const [confirmNewRound, setConfirmNewRound] = useState(false);
+  const prevCurrentRoundRef = useRef(-1);
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -57,6 +58,20 @@ export function Flip7Board({
     if (!winner) savedWinnerRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
+
+  // Auto-scroll to keep current round visible
+  useEffect(() => {
+    const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+    let curr = 0;
+    while (roundHasAnyEntry(curr)) curr++;
+
+    if (curr !== prevCurrentRoundRef.current) {
+      prevCurrentRoundRef.current = curr;
+      // Center current round in viewport (show 1 before, current, 1 after)
+      const newOffset = Math.max(0, curr - 1);
+      setRoundOffset(newOffset);
+    }
+  }, [players, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -107,6 +122,7 @@ export function Flip7Board({
         return { ...x, rounds };
       }),
     );
+    if (num !== null) setMaxRound((m) => Math.max(m, round + 1));
   };
 
   const addScoreToPlayer = (id: string, value: number) => {
@@ -134,12 +150,19 @@ export function Flip7Board({
     setRoundOffset(newOffset);
   };
 
-  // "Current hand" = first round where no player has a score yet.
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  // Current round = first round where all players need to enter scores
+  const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+
   let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
-  let playedHandsCount = 0;
-  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
+  while (roundHasAnyEntry(currentRound)) currentRound++;
+
+  let startedRounds = 0;
+  let completedRounds = 0;
+  for (let r = 0; r < maxRound; r++) {
+    if (roundHasAnyEntry(r)) startedRounds++;
+    if (roundIsComplete(r)) completedRounds++;
+  }
 
   const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
   const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
@@ -153,7 +176,7 @@ export function Flip7Board({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{playedHandsCount} completed</span>
+            <span className="microcap">{completedRounds} complete</span>
           </div>
           <div className="flex items-center gap-3">
             <label className="microcap flex items-center gap-1.5">

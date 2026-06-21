@@ -38,6 +38,7 @@ export function Phase10Board({
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
   const [confirmNewRound, setConfirmNewRound] = useState(false);
+  const prevCurrentRoundRef = useRef(-1);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -69,6 +70,19 @@ export function Phase10Board({
     if (!winner) savedWinnerRef.current = null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
+
+  // Auto-scroll to keep current round visible
+  useEffect(() => {
+    const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+    let curr = 0;
+    while (roundHasAnyEntry(curr)) curr++;
+
+    if (curr !== prevCurrentRoundRef.current) {
+      prevCurrentRoundRef.current = curr;
+      const newOffset = Math.max(0, curr - 1);
+      setRoundOffset(newOffset);
+    }
+  }, [players, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -119,6 +133,7 @@ export function Phase10Board({
         return { ...x, rounds };
       }),
     );
+    if (num !== null) setMaxRound((m) => Math.max(m, round + 1));
   };
 
   const addScoreToPlayer = (id: string, value: number) => {
@@ -158,11 +173,18 @@ export function Phase10Board({
     setRoundOffset(newOffset);
   };
 
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+
   let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
-  let playedHandsCount = 0;
-  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
+  while (roundHasAnyEntry(currentRound)) currentRound++;
+
+  let startedRounds = 0;
+  let completedRounds = 0;
+  for (let r = 0; r < maxRound; r++) {
+    if (roundHasAnyEntry(r)) startedRounds++;
+    if (roundIsComplete(r)) completedRounds++;
+  }
 
   const rowGrid =
     "grid grid-cols-[3rem_4.5rem_2.5rem_1fr_1.75rem] sm:grid-cols-[4.5rem_5.5rem_3.5rem_1fr_2.5rem] gap-1.5 sm:gap-2 items-center";
@@ -177,7 +199,7 @@ export function Phase10Board({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{playedHandsCount} completed</span>
+            <span className="microcap">{completedRounds} complete</span>
           </div>
           <span className="microcap">Clear all 10 phases</span>
         </div>

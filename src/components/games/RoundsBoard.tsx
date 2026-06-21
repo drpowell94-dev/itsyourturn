@@ -46,14 +46,15 @@ export function RoundsBoard({
   const [confirmNewRound, setConfirmNewRound] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const prevCurrentRoundRef = useRef(-1);
 
-  // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
+  // Reset round offset when starting a new game
   useEffect(() => {
-    if (players.length === 0 && maxRound === 3) {
+    if (players.length === 0) {
       setRoundOffset(0);
       setConfirmNewRound(false);
     }
-  }, [players.length, maxRound]);
+  }, [players.length]);
 
   const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   // Standings: best player first in either direction.
@@ -84,6 +85,19 @@ export function RoundsBoard({
     }
     if (!winner) savedWinnerRef.current = null;
   }, [winner?.id, onWinner, sorted]);
+
+  // Auto-scroll to keep current round visible
+  useEffect(() => {
+    const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+    let curr = 0;
+    while (roundHasAnyEntry(curr)) curr++;
+
+    if (curr !== prevCurrentRoundRef.current) {
+      prevCurrentRoundRef.current = curr;
+      const newOffset = Math.max(0, curr - 1);
+      setRoundOffset(newOffset);
+    }
+  }, [players, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -123,6 +137,7 @@ export function RoundsBoard({
         return { ...x, rounds };
       }),
     );
+    if (num !== null) setMaxRound((m) => Math.max(m, round + 1));
   };
 
   const addScoreToPlayer = (id: string, value: number) => {
@@ -151,11 +166,18 @@ export function RoundsBoard({
   };
 
   // "Current hand" = first round where no player has a score yet.
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
+  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+
   let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
-  let playedHandsCount = 0;
-  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
+  while (roundHasAnyEntry(currentRound)) currentRound++;
+
+  let startedRounds = 0;
+  let completedRounds = 0;
+  for (let r = 0; r < maxRound; r++) {
+    if (roundHasAnyEntry(r)) startedRounds++;
+    if (roundIsComplete(r)) completedRounds++;
+  }
 
   const hasAnyScore = players.some((p) => p.rounds.some((r) => r != null));
 
@@ -172,7 +194,7 @@ export function RoundsBoard({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{playedHandsCount} completed</span>
+            <span className="microcap">{completedRounds} complete</span>
           </div>
           <label className="microcap flex items-center gap-1.5">
             {lowWins ? "Ends at" : "To"}

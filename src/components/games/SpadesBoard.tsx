@@ -57,6 +57,7 @@ export function SpadesBoard({
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
+  const prevCurrentRoundRef = useRef(-1);
 
   // Ensure fixed Team A / Team B exist. Spades is team-based, so we don't
   // allow add/remove. If the session arrives empty (fresh game), seed it.
@@ -146,6 +147,7 @@ export function SpadesBoard({
       });
       return recomputeRound(next, round);
     });
+    if (parsed !== null) setMaxRound((m) => Math.max(m, round + 1));
   };
 
   const updateTricks = (id: string, round: number, v: string) => {
@@ -163,6 +165,7 @@ export function SpadesBoard({
       });
       return recomputeRound(next, round);
     });
+    if (parsed !== null) setMaxRound((m) => Math.max(m, round + 1));
   };
 
   const canPrev = roundOffset > 0;
@@ -190,6 +193,15 @@ export function SpadesBoard({
   useEffect(() => {
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
   }, [currentRound, maxRound, setMaxRound]);
+
+  // Auto-scroll to keep current round visible
+  useEffect(() => {
+    if (currentRound !== prevCurrentRoundRef.current) {
+      prevCurrentRoundRef.current = currentRound;
+      const newOffset = Math.max(0, currentRound - 1);
+      setRoundOffset(newOffset);
+    }
+  }, [currentRound]);
 
   const playedRounds = (() => {
     const out: number[] = [];
