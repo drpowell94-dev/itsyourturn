@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
@@ -165,12 +165,6 @@ export function Flip7Board({
   };
 
   const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
-  const canPrev = roundOffset > 0;
-  const goNext = () => {
-    const newOffset = roundOffset + 1;
-    if (newOffset + VISIBLE_ROUNDS > maxRound) setMaxRound(() => newOffset + VISIBLE_ROUNDS);
-    setRoundOffset(newOffset);
-  };
 
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
@@ -214,24 +208,9 @@ export function Flip7Board({
           <span className="microcap">Player</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
-            <button
-              onClick={() => canPrev && setRoundOffset(roundOffset - 1)}
-              disabled={!canPrev}
-              aria-label="Earlier rounds"
-              className="text-ink/40 hover:text-accent disabled:opacity-25 flex justify-center transition-colors"
-            >
-              <ChevronLeft size={15} />
-            </button>
             {visibleRounds.map((r) => (
               <span key={r} className="microcap text-center">R{r + 1}</span>
             ))}
-            <button
-              onClick={goNext}
-              aria-label="Later rounds"
-              className="text-ink/40 hover:text-accent flex justify-center transition-colors"
-            >
-              <ChevronRight size={15} />
-            </button>
           </div>
           <span />
         </div>
