@@ -492,7 +492,7 @@ function Stepper({
           onFocus={selectOnFocus}
           readOnly={disabled}
           aria-label={label}
-          placeholder="–"
+          placeholder="0"
           className="flex-1 min-w-0 text-center font-mono font-semibold tabular-nums text-xl text-ink bg-transparent outline-none placeholder:text-ink/25"
         />
         <button

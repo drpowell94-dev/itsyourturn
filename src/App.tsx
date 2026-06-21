@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreVertical } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
 import {
@@ -52,6 +52,7 @@ export default function App() {
   const [createError, setCreateError] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [joinInput, setJoinInput] = useState("");
+  const [showMenu, setShowMenu] = useState(false);
   const deviceId = getDeviceId();
   const applyingRemote = useRef(false);
   const skipNextSave = useRef(true);
@@ -393,35 +394,61 @@ export default function App() {
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 relative">
             {pin && (
-              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
-                <span className="microcap">Table</span>
-                <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
-                  {pin}
-                </span>
+              <div className="relative">
                 <button
-                  onClick={copyInvite}
-                  aria-label="Copy invite link"
-                  className="text-ink/40 hover:text-accent transition-colors"
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="text-ink/40 hover:text-accent transition-colors p-2"
+                  aria-label="Table menu"
                 >
-                  {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+                  <MoreVertical size={18} />
                 </button>
-                <span className="w-px h-4 bg-line" />
-                <button
-                  onClick={leaveGame}
-                  aria-label="Leave table"
-                  className="text-ink/40 hover:text-coral transition-colors"
-                >
-                  <LogOut size={14} />
-                </button>
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 z-50 bg-surface border-2 border-line rounded-xl shadow-lg min-w-48">
+                      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line">
+                        <span className="microcap">Table</span>
+                        <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
+                          {pin}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-line">
+                        <button
+                          onClick={() => {
+                            copyInvite();
+                            setShowMenu(false);
+                          }}
+                          className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-accent"
+                        >
+                          <Copy size={14} />
+                          Copy invite
+                        </button>
+                        <button
+                          onClick={() => {
+                            leaveGame();
+                            setShowMenu(false);
+                          }}
+                          className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-coral"
+                        >
+                          <LogOut size={14} />
+                          Leave table
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <button
               onClick={() => setShowArchive(true)}
               className="btn btn-white px-3.5 py-2 text-sm"
             >
-              Tonight
+              Leaderboard
             </button>
           </div>
         </header>
