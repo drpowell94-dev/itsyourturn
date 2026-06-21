@@ -332,7 +332,7 @@ export function Phase10Board({
                           value={pl.rounds[r] ?? ""}
                           onChange={(e) => updateScore(pl.id, r, e.target.value)}
                           onFocus={selectOnFocus}
-                          readOnly={!canEdit(pl)}
+                          readOnly={!canEdit(pl) || r > currentRound}
                           placeholder="0"
                           aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
                           className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
