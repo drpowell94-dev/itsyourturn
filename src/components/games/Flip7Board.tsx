@@ -294,7 +294,7 @@ export function Flip7Board({
               : "btn-white"
           }`}
         >
-          {confirmNewRound ? "Sure?" : "New round"}
+          {confirmNewRound ? "Sure?" : "New game"}
         </button>
         <button
           onClick={() => setAddingPlayer(true)}
