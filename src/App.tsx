@@ -161,9 +161,10 @@ export default function App() {
     setTargetScore(GAME_DEFAULT_TARGET[type]);
   };
 
-  const createGame = async (type: GameType) => {
+  const createGame = async (type: GameType, overrideTarget?: number, overrideRules?: CustomRules | null) => {
     // Custom games keep whatever target the host chose in setup.
-    const initialTarget = type === "custom" ? targetScore : GAME_DEFAULT_TARGET[type];
+    const initialTarget = type === "custom" ? (overrideTarget ?? targetScore) : GAME_DEFAULT_TARGET[type];
+    const rulesForInsert = overrideRules ?? customRules;
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const { data, error } = await supabase
@@ -174,10 +175,10 @@ export default function App() {
           state: {
             players: [],
             targetScore: initialTarget,
-            maxRound: 3,
+            maxRound: 1,
             hostId: deviceId,
             gameType: type,
-            customRules,
+            customRules: rulesForInsert,
           },
         })
         .select("updated_at")
@@ -348,14 +349,16 @@ export default function App() {
           isCustom={true}
           onBack={backToPicker}
           onStart={(result: any) => {
-            setCustomRules({
+            const newRules: CustomRules = {
               name: result.name,
               gameMode: result.gameMode,
               target: result.target,
               rounds: result.rounds,
-            });
-            setTargetScore(result.target || 250);
-            Promise.resolve().then(() => createGame("custom"));
+            };
+            const newTarget = result.target || 250;
+            setCustomRules(newRules);
+            setTargetScore(newTarget);
+            Promise.resolve().then(() => createGame("custom", newTarget, newRules));
           }}
         />
       );
@@ -368,7 +371,7 @@ export default function App() {
         onBack={backToPicker}
         onStart={(result: any) => {
           setTargetScore(result.target);
-          Promise.resolve().then(() => createGame(gameType));
+          Promise.resolve().then(() => createGame(gameType, result.target));
         }}
       />
     );
