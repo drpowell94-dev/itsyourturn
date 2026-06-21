@@ -76,7 +76,6 @@ export function Flip7Board({
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
         showDialogRef.current = false;
-        return;
       }
     }
     prevRoundRef.current = currentRound;
@@ -84,6 +83,11 @@ export function Flip7Board({
     // Show dialog when first score is entered in new round
     if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
       showDialogRef.current = true;
+    }
+
+    // Grow maxRound if needed
+    if (currentRound >= maxRound) {
+      setMaxRound(currentRound + 1);
     }
 
     // Auto-scroll to keep current round visible
@@ -94,7 +98,7 @@ export function Flip7Board({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, players, pendingMissing]);
+  }, [currentRound, players, pendingMissing, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;

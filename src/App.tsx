@@ -188,7 +188,7 @@ export default function App() {
         sessionIdRef.current = crypto.randomUUID();
         setPlayers([]);
         setTargetScore(initialTarget);
-        setMaxRound(3);
+        setMaxRound(1);
         setHostId(deviceId);
         setGameType(type);
         window.history.replaceState(null, "", `?pin=${newPin}`);
