@@ -15,14 +15,17 @@ export function CustomSetup({ isCustom = true, gameType, onStart, onBack }: Prop
   const [name, setName] = useState("");
   const [lowWins, setLowWins] = useState(false);
   const [targetDraft, setTargetDraft] = useState(isCustom ? "250" : "200");
+  const [hasBust, setHasBust] = useState(false);
+  const [bustDraft, setBustDraft] = useState("500");
 
   const target = targetDraft === "" ? 0 : parseInt(targetDraft, 10);
+  const bust = hasBust && bustDraft !== "" ? parseInt(bustDraft, 10) : null;
   const canStart = target > 0 && (isCustom ? name.trim() || true : true);
 
   const start = () => {
     if (!canStart) return;
     if (isCustom) {
-      onStart({ name: name.trim() || "Your Game", lowWins, target });
+      onStart({ name: name.trim() || "Your Game", lowWins, target, bust });
     } else {
       onStart({ target });
     }
@@ -118,6 +121,41 @@ export function CustomSetup({ isCustom = true, gameType, onStart, onBack }: Prop
               className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
             />
           </label>
+
+          {isCustom && (
+            <div className="pt-1">
+              <label className="flex items-center gap-2 mb-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasBust}
+                  onChange={(e) => setHasBust(e.target.checked)}
+                  className="w-4 h-4 rounded border-2 border-line accent-accent"
+                />
+                <span className="microcap">Someone busts at</span>
+              </label>
+              {hasBust && (
+                <input
+                  value={bustDraft}
+                  onChange={(e) =>
+                    setBustDraft(
+                      e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5),
+                    )
+                  }
+                  onFocus={(e) => {
+                    const el = e.target;
+                    requestAnimationFrame(() => el.select());
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && start()}
+                  inputMode="numeric"
+                  aria-label="Bust score"
+                  className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
+                />
+              )}
+              <p className="mt-1.5 text-xs text-ink/50 font-semibold">
+                The player who reaches this score loses and the game ends.
+              </p>
+            </div>
+          )}
 
           <button onClick={start} disabled={!canStart} className="btn btn-accent w-full py-3 text-sm">
             {isCustom ? "Start scoring" : "Create game"}

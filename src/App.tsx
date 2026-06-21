@@ -348,7 +348,7 @@ export default function App() {
           isCustom={true}
           onBack={backToPicker}
           onStart={(result: any) => {
-            setCustomRules({ name: result.name, lowWins: result.lowWins });
+            setCustomRules({ name: result.name, lowWins: result.lowWins, bust: result.bust });
             setTargetScore(result.target);
             Promise.resolve().then(() => createGame("custom"));
           }}
