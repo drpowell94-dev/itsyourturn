@@ -63,12 +63,12 @@ export function RoundsBoard({
   const gameOver = players.some((p) => total(p) >= targetScore);
   let winner = null;
   if (gameOver && sorted.length > 0) {
-    if (gameType === "uno" && !lowWins) {
-      // UNO: the person who reached the target (highest score) is the loser
+    if (gameType === "uno") {
+      // UNO: the person who reached the target first (highest score) is the loser
       const sortedByScore = [...players].sort((a, b) => total(b) - total(a));
       winner = sortedByScore[0]; // Highest scorer = first to reach target = loser
     } else {
-      // Other games: best-ranked player wins
+      // Other games: best-ranked player wins (considering lowWins)
       winner = sorted[0];
     }
   }
@@ -187,10 +187,10 @@ export function RoundsBoard({
 
         {winner && winner.initials && (
           <div className={`px-3 sm:px-4 py-2.5 border-b border-line ${
-            gameType === "uno" && !lowWins ? "bg-coral/20" : "bg-accent-soft"
+            gameType === "uno" ? "bg-coral/20" : "bg-accent-soft"
           }`}>
             <span className="font-display font-bold text-base">
-              {gameType === "uno" && !lowWins
+              {gameType === "uno"
                 ? `💔 ${winner.initials} busted at ${total(winner)}!`
                 : lowWins
                 ? `🏆 ${winner.initials} wins low with ${total(winner)}!`
