@@ -97,7 +97,7 @@ export function RoundsBoard({
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
     // Blur focused input when moving to next round
-    if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+    if (prevRoundRef.current !== currentRound) {
       if (inputRef.current && inputRef.current === document.activeElement) {
         inputRef.current.blur();
       }

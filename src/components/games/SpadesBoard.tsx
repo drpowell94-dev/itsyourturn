@@ -194,7 +194,7 @@ export function SpadesBoard({
   useEffect(() => {
     if (players.length !== 2) return;
 
-    if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+    if (prevRoundRef.current !== currentRound) {
       const prevRound = prevRoundRef.current;
       const missing = players
         .filter((p) => {
