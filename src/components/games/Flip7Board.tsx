@@ -40,7 +40,6 @@ export function Flip7Board({
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
   const [confirmNewRound, setConfirmNewRound] = useState(false);
-  const [missingScores, setMissingScores] = useState<string[]>([]);
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const sorted = [...players].sort((a, b) => total(b) - total(a));
@@ -141,33 +140,6 @@ export function Flip7Board({
   while (handIsPlayed(currentRound)) currentRound++;
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
-
-  const handleNewRoundClick = () => {
-    if (confirmNewRound) {
-      if (missingScores.length > 0) {
-        setPlayers((p) =>
-          p.map((x) => {
-            if (!missingScores.includes(x.id)) return x;
-            const rounds = [...x.rounds];
-            while (rounds.length <= currentRound) rounds.push(null);
-            if (rounds[currentRound] === null) rounds[currentRound] = 0;
-            return { ...x, rounds };
-          }),
-        );
-        setMissingScores([]);
-      }
-      onNewGame();
-      setConfirmNewRound(false);
-    } else {
-      const missing = players
-        .filter((p) => p.rounds[currentRound] == null)
-        .map((p) => p.id);
-      if (missing.length > 0) {
-        setMissingScores(missing);
-      }
-      setConfirmNewRound(true);
-    }
-  };
 
   const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
   const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
@@ -315,7 +287,7 @@ export function Flip7Board({
           All 0
         </button>
         <button
-          onClick={handleNewRoundClick}
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
           className={`btn py-2.5 text-sm ${
             confirmNewRound
               ? "bg-coral text-white border-coral"
@@ -331,45 +303,6 @@ export function Flip7Board({
           <Plus size={15} /> Add
         </button>
       </div>
-
-      {missingScores.length > 0 && confirmNewRound && (
-        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
-            <h2 className="font-display font-bold text-2xl mb-4">Record 0 for missing scores?</h2>
-            <p className="text-sm text-ink/60 mb-4">
-              These players haven't entered a score for Round {currentRound + 1}. Record 0 for them?
-            </p>
-            <div className="border-t border-line mb-4 max-h-40 overflow-y-auto">
-              {players
-                .filter((p) => missingScores.includes(p.id))
-                .map((p) => (
-                  <div key={p.id} className="py-2 border-b border-line last:border-b-0">
-                    <span className="font-mono font-semibold tracking-[0.15em] text-sm">
-                      {p.initials || "???"}
-                    </span>
-                  </div>
-                ))}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleNewRoundClick}
-                className="btn btn-accent flex-1 py-2.5 text-sm"
-              >
-                Record 0 & continue
-              </button>
-              <button
-                onClick={() => {
-                  setConfirmNewRound(false);
-                  setMissingScores([]);
-                }}
-                className="btn btn-white flex-1 py-2.5 text-sm"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {addingPlayer && (
         <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
