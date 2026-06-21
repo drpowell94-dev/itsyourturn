@@ -421,7 +421,7 @@ export default function App() {
               onClick={() => setShowArchive(true)}
               className="btn btn-white px-3.5 py-2 text-sm"
             >
-              Tonight
+              Leaderboard
             </button>
           </div>
         </header>
