@@ -398,13 +398,6 @@ export function RoundsBoard({
             />
             <div className="flex gap-2">
               <button
-                onClick={confirmAddPlayer}
-                disabled={!newPlayerInitials.trim()}
-                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
-              >
-                Add
-              </button>
-              <button
                 onClick={() => {
                   setAddingPlayer(false);
                   setNewPlayerInitials("");
@@ -412,6 +405,13 @@ export function RoundsBoard({
                 className="btn btn-white flex-1 py-2.5 text-sm"
               >
                 Cancel
+              </button>
+              <button
+                onClick={confirmAddPlayer}
+                disabled={!newPlayerInitials.trim()}
+                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
+              >
+                Add
               </button>
             </div>
           </div>
