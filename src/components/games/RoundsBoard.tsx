@@ -125,16 +125,12 @@ export function RoundsBoard({
     setAddingPlayer(false);
   };
 
-  const setAllCurrentRoundToZero = () => {
-    const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
-    let curr = 0;
-    while (roundHasAnyEntry(curr)) curr++;
-
+  const setAllCurrentRoundToZero = (round: number) => {
     setPlayers((p) =>
       p.map((x) => {
         const rounds = [...x.rounds];
-        while (rounds.length <= curr) rounds.push(null);
-        if (rounds[curr] === null) rounds[curr] = 0;
+        while (rounds.length <= round) rounds.push(null);
+        if (rounds[round] === null) rounds[round] = 0;
         return { ...x, rounds };
       }),
     );
@@ -428,7 +424,7 @@ export function RoundsBoard({
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setAllCurrentRoundToZero();
+                  setAllCurrentRoundToZero(missingScoresRound);
                   setShowMissingScoresDialog(false);
                 }}
                 className="btn btn-accent flex-1 py-2.5 text-sm"

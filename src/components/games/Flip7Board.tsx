@@ -101,12 +101,12 @@ export function Flip7Board({
     setAddingPlayer(false);
   };
 
-  const setAllCurrentRoundToZero = () => {
+  const setAllCurrentRoundToZero = (round: number) => {
     setPlayers((p) =>
       p.map((x) => {
         const rounds = [...x.rounds];
-        while (rounds.length <= currentRound) rounds.push(null);
-        if (rounds[currentRound] === null) rounds[currentRound] = 0;
+        while (rounds.length <= round) rounds.push(null);
+        if (rounds[round] === null) rounds[round] = 0;
         return { ...x, rounds };
       }),
     );
@@ -321,7 +321,7 @@ export function Flip7Board({
 
       <div className="grid grid-cols-3 gap-2 mt-5">
         <button
-          onClick={setAllCurrentRoundToZero}
+          onClick={() => setAllCurrentRoundToZero(currentRound)}
           className="btn btn-white py-2.5 text-sm"
           title="Set all players to 0 for this round"
         >
@@ -391,7 +391,7 @@ export function Flip7Board({
             <div className="flex gap-2">
               <button
                 onClick={() => {
-                  setAllCurrentRoundToZero();
+                  setAllCurrentRoundToZero(missingScoresRound);
                   setShowMissingScoresDialog(false);
                 }}
                 className="btn btn-accent flex-1 py-2.5 text-sm"

@@ -234,15 +234,15 @@ export function SpadesBoard({
     else updateTricks(id, round, String(next));
   };
 
-  const setAllCurrentRoundToZero = () => {
+  const setAllCurrentRoundToZero = (round: number) => {
     setPlayers((p) =>
       p.map((team) => {
         const bids = [...(team.bids ?? [])];
         const tricks = [...(team.tricks ?? [])];
-        while (bids.length <= currentRound) bids.push(null);
-        while (tricks.length <= currentRound) tricks.push(null);
-        if (bids[currentRound] === null) bids[currentRound] = 0;
-        if (tricks[currentRound] === null) tricks[currentRound] = 0;
+        while (bids.length <= round) bids.push(null);
+        while (tricks.length <= round) tricks.push(null);
+        if (bids[round] === null) bids[round] = 0;
+        if (tricks[round] === null) tricks[round] = 0;
         return { ...team, bids, tricks };
       }),
     );
@@ -504,7 +504,7 @@ export function SpadesBoard({
               <button
                 onClick={() => {
                   setShowMissingScoresDialog(false);
-                  setAllCurrentRoundToZero();
+                  setAllCurrentRoundToZero(missingScoresRound);
                 }}
                 className="btn btn-accent flex-1 py-2.5 text-sm"
               >
