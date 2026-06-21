@@ -396,52 +396,52 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2 relative">
             {pin && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="text-ink/40 hover:text-accent transition-colors p-2"
-                  aria-label="Table menu"
-                >
-                  <MoreVertical size={18} />
-                </button>
-                {showMenu && (
-                  <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setShowMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-1 z-50 bg-surface border-2 border-line rounded-xl shadow-lg min-w-48">
-                      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line">
-                        <span className="microcap">Table</span>
-                        <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
-                          {pin}
-                        </span>
+              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
+                <span className="microcap">Table</span>
+                <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
+                  {pin}
+                </span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowMenu(!showMenu)}
+                    className="text-ink/40 hover:text-accent transition-colors p-1"
+                    aria-label="Table menu"
+                  >
+                    <MoreVertical size={14} />
+                  </button>
+                  {showMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setShowMenu(false)}
+                      />
+                      <div className="absolute right-0 top-full mt-1 z-50 bg-surface border-2 border-line rounded-xl shadow-lg min-w-48">
+                        <div className="divide-y divide-line">
+                          <button
+                            onClick={() => {
+                              copyInvite();
+                              setShowMenu(false);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-accent"
+                          >
+                            {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+                            {copied ? 'Copied!' : 'Copy invite'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              leaveGame();
+                              setShowMenu(false);
+                            }}
+                            className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-coral"
+                          >
+                            <LogOut size={14} />
+                            Leave table
+                          </button>
+                        </div>
                       </div>
-                      <div className="divide-y divide-line">
-                        <button
-                          onClick={() => {
-                            copyInvite();
-                            setShowMenu(false);
-                          }}
-                          className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-accent"
-                        >
-                          {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
-                          {copied ? 'Copied!' : 'Copy invite'}
-                        </button>
-                        <button
-                          onClick={() => {
-                            leaveGame();
-                            setShowMenu(false);
-                          }}
-                          className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-coral"
-                        >
-                          <LogOut size={14} />
-                          Leave table
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                    </>
+                  )}
+                </div>
               </div>
             )}
             <button
