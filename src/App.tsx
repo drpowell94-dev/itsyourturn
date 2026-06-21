@@ -348,8 +348,13 @@ export default function App() {
           isCustom={true}
           onBack={backToPicker}
           onStart={(result: any) => {
-            setCustomRules({ name: result.name, lowWins: result.lowWins, bust: result.bust });
-            setTargetScore(result.target);
+            setCustomRules({
+              name: result.name,
+              gameMode: result.gameMode,
+              target: result.target,
+              rounds: result.rounds,
+            });
+            setTargetScore(result.target || 250);
             Promise.resolve().then(() => createGame("custom"));
           }}
         />
@@ -548,7 +553,7 @@ export default function App() {
             setMaxRound={setMaxRound}
             targetScore={targetScore}
             setTargetScore={setTargetScore}
-            lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
+            lowWins={gameType === "hearts" || (gameType === "custom" && customRules?.gameMode === "rounds")}
             calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
             ownerIdForNew={pin ? deviceId : null}

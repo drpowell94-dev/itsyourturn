@@ -28,7 +28,12 @@ export const GAME_DEFAULT_TARGET: Record<GameType, number> = {
 };
 
 /** Rules a host picks for a custom game; synced through the state blob. */
-export type CustomRules = { name: string; lowWins: boolean; bust?: number | null };
+export type CustomRules = {
+  name: string;
+  gameMode: "wins" | "loses" | "rounds";
+  target?: number;
+  rounds?: number;
+};
 
 export function isGameType(v: unknown): v is GameType {
   return typeof v === "string" && v in GAME_LABELS;

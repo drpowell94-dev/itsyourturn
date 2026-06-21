@@ -1,31 +1,33 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import type { CustomRules } from "@/lib/games";
 import { GAME_LABELS, type GameType } from "@/lib/games";
 
 type Props = {
   isCustom?: boolean;
   gameType?: GameType;
-  onStart: (rules: (CustomRules & { target: number }) | { target: number }) => void;
+  onStart: (rules: any) => void;
   onBack: () => void;
 };
 
 // Setup for custom games or to configure standard game target score before creating
 export function CustomSetup({ isCustom = true, gameType, onStart, onBack }: Props) {
   const [name, setName] = useState("");
-  const [lowWins, setLowWins] = useState(false);
-  const [targetDraft, setTargetDraft] = useState(isCustom ? "250" : "200");
-  const [hasBust, setHasBust] = useState(false);
-  const [bustDraft, setBustDraft] = useState("500");
+  const [gameMode, setGameMode] = useState<"wins" | "loses" | "rounds">("wins");
+  const [targetDraft, setTargetDraft] = useState("250");
+  const [roundsDraft, setRoundsDraft] = useState("5");
 
   const target = targetDraft === "" ? 0 : parseInt(targetDraft, 10);
-  const bust = hasBust && bustDraft !== "" ? parseInt(bustDraft, 10) : null;
-  const canStart = target > 0 && (isCustom ? name.trim() || true : true);
+  const rounds = roundsDraft === "" ? 0 : parseInt(roundsDraft, 10);
+  const canStart = isCustom ? name.trim() && (gameMode === "rounds" ? rounds > 0 : target > 0) : target > 0;
 
   const start = () => {
     if (!canStart) return;
     if (isCustom) {
-      onStart({ name: name.trim() || "Your Game", lowWins, target, bust });
+      if (gameMode === "rounds") {
+        onStart({ name: name.trim() || "Your Game", gameMode, rounds });
+      } else {
+        onStart({ name: name.trim() || "Your Game", gameMode, target });
+      }
     } else {
       onStart({ target });
     }
@@ -70,91 +72,116 @@ export function CustomSetup({ isCustom = true, gameType, onStart, onBack }: Prop
               </label>
 
               <div>
-                <span className="microcap block mb-1.5">Who wins?</span>
-                <div className="grid grid-cols-2 gap-2">
+                <span className="microcap block mb-1.5">How does it end?</span>
+                <div className="space-y-2">
                   <button
-                    onClick={() => setLowWins(false)}
-                    className={`py-2.5 rounded-xl border-2 font-display font-bold text-sm transition-colors ${
-                      !lowWins
+                    onClick={() => setGameMode("wins")}
+                    className={`w-full py-2.5 rounded-xl border-2 font-display font-bold text-sm text-left px-3 transition-colors ${
+                      gameMode === "wins"
                         ? "border-accent bg-accent-soft text-accent"
                         : "border-line bg-paper text-ink/60 hover:border-accent/50"
                     }`}
                   >
-                    Highest score
+                    First to score wins
                   </button>
                   <button
-                    onClick={() => setLowWins(true)}
-                    className={`py-2.5 rounded-xl border-2 font-display font-bold text-sm transition-colors ${
-                      lowWins
+                    onClick={() => setGameMode("loses")}
+                    className={`w-full py-2.5 rounded-xl border-2 font-display font-bold text-sm text-left px-3 transition-colors ${
+                      gameMode === "loses"
                         ? "border-accent bg-accent-soft text-accent"
                         : "border-line bg-paper text-ink/60 hover:border-accent/50"
                     }`}
                   >
-                    Lowest score
+                    First to score loses (busts)
+                  </button>
+                  <button
+                    onClick={() => setGameMode("rounds")}
+                    className={`w-full py-2.5 rounded-xl border-2 font-display font-bold text-sm text-left px-3 transition-colors ${
+                      gameMode === "rounds"
+                        ? "border-accent bg-accent-soft text-accent"
+                        : "border-line bg-paper text-ink/60 hover:border-accent/50"
+                    }`}
+                  >
+                    Complete rounds, lowest wins
                   </button>
                 </div>
                 <p className="mt-1.5 text-xs text-ink/50 font-semibold">
-                  {lowWins
-                    ? "The game ends when anyone reaches the number — lowest total wins."
-                    : "First to reach the number takes the game."}
+                  {gameMode === "wins"
+                    ? "Like Hearts or Flip 7 — first to reach the number wins."
+                    : gameMode === "loses"
+                      ? "Like UNO — first to reach the number loses."
+                      : "Like Phase 10 or Golf — play X rounds, lowest total wins."}
                 </p>
               </div>
             </>
           )}
 
-          <label className="block">
-            <span className="microcap block mb-1.5">{isCustom && lowWins ? "Game ends at" : "Play to"}</span>
-            <input
-              value={targetDraft}
-              onChange={(e) =>
-                setTargetDraft(
-                  e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5),
-                )
-              }
-              onFocus={(e) => {
-                const el = e.target;
-                requestAnimationFrame(() => el.select());
-              }}
-              onKeyDown={(e) => e.key === "Enter" && start()}
-              inputMode="numeric"
-              aria-label="Target score"
-              className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
-            />
-          </label>
+          {isCustom && gameMode !== "rounds" && (
+            <label className="block">
+              <span className="microcap block mb-1.5">
+                {gameMode === "loses" ? "Bust at" : "Play to"}
+              </span>
+              <input
+                value={targetDraft}
+                onChange={(e) =>
+                  setTargetDraft(
+                    e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5),
+                  )
+                }
+                onFocus={(e) => {
+                  const el = e.target;
+                  requestAnimationFrame(() => el.select());
+                }}
+                onKeyDown={(e) => e.key === "Enter" && start()}
+                inputMode="numeric"
+                aria-label="Target score"
+                className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
+              />
+            </label>
+          )}
 
-          {isCustom && (
-            <div className="pt-1">
-              <label className="flex items-center gap-2 mb-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={hasBust}
-                  onChange={(e) => setHasBust(e.target.checked)}
-                  className="w-4 h-4 rounded border-2 border-line accent-accent"
-                />
-                <span className="microcap">Someone busts at</span>
-              </label>
-              {hasBust && (
-                <input
-                  value={bustDraft}
-                  onChange={(e) =>
-                    setBustDraft(
-                      e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5),
-                    )
-                  }
-                  onFocus={(e) => {
-                    const el = e.target;
-                    requestAnimationFrame(() => el.select());
-                  }}
-                  onKeyDown={(e) => e.key === "Enter" && start()}
-                  inputMode="numeric"
-                  aria-label="Bust score"
-                  className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
-                />
-              )}
-              <p className="mt-1.5 text-xs text-ink/50 font-semibold">
-                The player who reaches this score loses and the game ends.
-              </p>
-            </div>
+          {isCustom && gameMode === "rounds" && (
+            <label className="block">
+              <span className="microcap block mb-1.5">Play how many rounds?</span>
+              <input
+                value={roundsDraft}
+                onChange={(e) =>
+                  setRoundsDraft(
+                    e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 2),
+                  )
+                }
+                onFocus={(e) => {
+                  const el = e.target;
+                  requestAnimationFrame(() => el.select());
+                }}
+                onKeyDown={(e) => e.key === "Enter" && start()}
+                inputMode="numeric"
+                aria-label="Number of rounds"
+                className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
+              />
+            </label>
+          )}
+
+          {!isCustom && (
+            <label className="block">
+              <span className="microcap block mb-1.5">Play to</span>
+              <input
+                value={targetDraft}
+                onChange={(e) =>
+                  setTargetDraft(
+                    e.target.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 5),
+                  )
+                }
+                onFocus={(e) => {
+                  const el = e.target;
+                  requestAnimationFrame(() => el.select());
+                }}
+                onKeyDown={(e) => e.key === "Enter" && start()}
+                inputMode="numeric"
+                aria-label="Target score"
+                className="w-32 font-mono font-semibold text-lg text-accent text-center bg-paper border-2 border-line rounded-xl px-3 py-2.5 outline-none focus:border-accent transition-colors"
+              />
+            </label>
           )}
 
           <button onClick={start} disabled={!canStart} className="btn btn-accent w-full py-3 text-sm">
