@@ -159,7 +159,6 @@ export default function App() {
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
     setTargetScore(GAME_DEFAULT_TARGET[type]);
-    Promise.resolve().then(() => createGame(type));
   };
 
   const createGame = async (type: GameType) => {
@@ -341,6 +340,35 @@ export default function App() {
     );
   }
 
+  // ── Setup: configure game before creating ────────────────────────────
+  if (!pin && gameType) {
+    if (gameType === "custom") {
+      return (
+        <CustomSetup
+          isCustom={true}
+          onBack={backToPicker}
+          onStart={(result: any) => {
+            setCustomRules({ name: result.name, lowWins: result.lowWins });
+            setTargetScore(result.target);
+            Promise.resolve().then(() => createGame("custom"));
+          }}
+        />
+      );
+    }
+    // Standard games: show setup to configure target score
+    return (
+      <CustomSetup
+        isCustom={false}
+        gameType={gameType}
+        onBack={backToPicker}
+        onStart={(result: any) => {
+          setTargetScore(result.target);
+          Promise.resolve().then(() => createGame(gameType));
+        }}
+      />
+    );
+  }
+
   // ── Joining: waiting for the table to load ──────────────────────────
   if (pin && (!gameType || (gameType === "custom" && !customRules))) {
     return (
@@ -349,19 +377,6 @@ export default function App() {
           Pulling up a chair at table {pin}…
         </p>
       </div>
-    );
-  }
-
-  // ── Custom game: name it and pick the rules before the board ────────
-  if (gameType === "custom" && !customRules) {
-    return (
-      <CustomSetup
-        onBack={backToPicker}
-        onStart={({ name, lowWins, target }) => {
-          setCustomRules({ name, lowWins });
-          setTargetScore(target);
-        }}
-      />
     );
   }
 
