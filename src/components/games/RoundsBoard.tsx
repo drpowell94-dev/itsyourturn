@@ -97,7 +97,7 @@ export function RoundsBoard({
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
     // Blur focused input when moving to next round
-    if (prevRoundRef.current !== currentRound) {
+    if (prevRoundRef.current >= 0 && prevRoundRef.current !== currentRound) {
       if (inputRef.current && inputRef.current === document.activeElement) {
         inputRef.current.blur();
       }
@@ -107,10 +107,15 @@ export function RoundsBoard({
         .map((p) => p.id);
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
-        showDialogRef.current = true;
+        showDialogRef.current = false;
       }
     }
     prevRoundRef.current = currentRound;
+
+    // Show dialog when first score is entered in new round
+    if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
+      showDialogRef.current = true;
+    }
 
     // Grow maxRound if needed
     if (currentRound >= maxRound) {
@@ -125,7 +130,7 @@ export function RoundsBoard({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, players, maxRound]);
+  }, [currentRound, players, pendingMissing, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;

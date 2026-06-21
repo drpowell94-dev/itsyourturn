@@ -194,7 +194,7 @@ export function SpadesBoard({
   useEffect(() => {
     if (players.length !== 2) return;
 
-    if (prevRoundRef.current !== currentRound) {
+    if (prevRoundRef.current >= 0 && prevRoundRef.current !== currentRound) {
       const prevRound = prevRoundRef.current;
       const missing = players
         .filter((p) => {
@@ -205,13 +205,18 @@ export function SpadesBoard({
         .map((p) => p.id);
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
-        showDialogRef.current = true;
+        showDialogRef.current = false;
       }
     }
     prevRoundRef.current = currentRound;
 
+    // Show dialog when first entry is made in new round
+    if (pendingMissing && !showDialogRef.current && roundIsFinalized(currentRound)) {
+      showDialogRef.current = true;
+    }
+
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
-  }, [currentRound, players, maxRound, setMaxRound]);
+  }, [currentRound, players, pendingMissing, maxRound, setMaxRound]);
 
   const playedRounds = (() => {
     const out: number[] = [];
