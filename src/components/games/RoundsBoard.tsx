@@ -46,6 +46,8 @@ export function RoundsBoard({
   const [confirmNewRound, setConfirmNewRound] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
+  const prevRoundRef = useRef<number>(-1);
 
   // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
   useEffect(() => {
@@ -84,6 +86,35 @@ export function RoundsBoard({
     }
     if (!winner) savedWinnerRef.current = null;
   }, [winner?.id, onWinner, sorted]);
+
+  // Calculate current round
+  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  let currentRound = 0;
+  while (handIsPlayed(currentRound)) currentRound++;
+
+  // Auto-scroll to keep currentRound visible and check for missing scores
+  useEffect(() => {
+    if (prevRoundRef.current !== -1 && prevRoundRef.current !== currentRound) {
+      const prevRound = prevRoundRef.current;
+      const missing = players
+        .filter((p) => p.rounds[prevRound] == null)
+        .map((p) => p.id);
+      if (missing.length > 0) {
+        setPendingMissing({ round: prevRound, playerIds: missing });
+        return;
+      }
+    }
+    prevRoundRef.current = currentRound;
+
+    // Auto-scroll to keep current round visible
+    const visibleStart = roundOffset;
+    const visibleEnd = roundOffset + VISIBLE_ROUNDS - 1;
+    if (currentRound < visibleStart) {
+      setRoundOffset(Math.max(0, currentRound - 1));
+    } else if (currentRound > visibleEnd) {
+      setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
+    }
+  }, [currentRound, roundOffset]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -150,10 +181,6 @@ export function RoundsBoard({
     setRoundOffset(newOffset);
   };
 
-  // "Current hand" = first round where no player has a score yet.
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
-  let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
@@ -356,6 +383,54 @@ export function RoundsBoard({
                   setAddingPlayer(false);
                   setNewPlayerInitials("");
                 }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMissing && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Record 0 for missing scores?</h2>
+            <p className="text-sm text-ink/60 mb-4">
+              These players haven't entered a score for Round {pendingMissing.round + 1}. Record 0 for them?
+            </p>
+            <div className="border-t border-line mb-4 max-h-40 overflow-y-auto">
+              {players
+                .filter((p) => pendingMissing.playerIds.includes(p.id))
+                .map((p) => (
+                  <div key={p.id} className="py-2 border-b border-line last:border-b-0">
+                    <span className="font-mono font-semibold tracking-[0.15em] text-sm">
+                      {p.initials || "???"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPlayers((p) =>
+                    p.map((x) => {
+                      if (!pendingMissing.playerIds.includes(x.id)) return x;
+                      const rounds = [...x.rounds];
+                      while (rounds.length <= pendingMissing.round) rounds.push(null);
+                      if (rounds[pendingMissing.round] === null) rounds[pendingMissing.round] = 0;
+                      return { ...x, rounds };
+                    }),
+                  );
+                  setPendingMissing(null);
+                  prevRoundRef.current = currentRound;
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Record 0 & continue
+              </button>
+              <button
+                onClick={() => setPendingMissing(null)}
                 className="btn btn-white flex-1 py-2.5 text-sm"
               >
                 Cancel
