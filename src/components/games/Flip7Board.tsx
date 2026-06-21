@@ -28,13 +28,14 @@ type Props = {
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => void;
   onNewGame: () => void;
+  isHost: boolean;
 };
 
 const VISIBLE_ROUNDS = 3;
 
 export function Flip7Board({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  canEdit, ownerIdForNew, onWinner, onNewGame, isHost,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [addingPlayer, setAddingPlayer] = useState(false);
@@ -65,6 +66,7 @@ export function Flip7Board({
   useEffect(() => {
     const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
     const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+    const playersWithEntry = (r: number) => players.filter((p) => p.rounds[r] != null).length;
 
     let curr = 0;
     while (roundHasAnyEntry(curr)) curr++;
@@ -73,17 +75,21 @@ export function Flip7Board({
       const prevRound = prevCurrentRoundRef.current;
       prevCurrentRoundRef.current = curr;
 
-      // Check if previous round had any entries but not all players completed
       if (prevRound >= 0 && roundHasAnyEntry(prevRound) && !roundIsComplete(prevRound)) {
-        setMissingScoresRound(prevRound);
-        setShowMissingScoresDialog(true);
+        // For host: always show if round has entries but incomplete
+        // For regular players: only show if total_players - 1 have entered
+        const shouldShow = isHost || playersWithEntry(prevRound) >= players.length - 1;
+        if (shouldShow) {
+          setMissingScoresRound(prevRound);
+          setShowMissingScoresDialog(true);
+        }
       }
 
       // Center current round in viewport
       const newOffset = Math.max(0, curr - 1);
       setRoundOffset(newOffset);
     }
-  }, [players, maxRound]);
+  }, [players, maxRound, isHost]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;

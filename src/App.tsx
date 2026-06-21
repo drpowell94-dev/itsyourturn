@@ -189,7 +189,7 @@ export default function App() {
         sessionIdRef.current = crypto.randomUUID();
         setPlayers([]);
         setTargetScore(initialTarget);
-        setMaxRound(3);
+        setMaxRound(1);
         setHostId(deviceId);
         setGameType(type);
         window.history.replaceState(null, "", `?pin=${newPin}`);
@@ -217,14 +217,14 @@ export default function App() {
     window.history.replaceState(null, "", window.location.pathname);
     skipNextSave.current = true;
     setPlayers([]);
-    setMaxRound(3);
+    setMaxRound(1);
   };
 
   const backToPicker = () => {
     setGameType(null);
     setCustomRules(null);
     setPlayers([]);
-    setMaxRound(3);
+    setMaxRound(1);
     setTargetScore(200);
     sessionIdRef.current = crypto.randomUUID();
     winnerSavedRef.current = null;
@@ -260,7 +260,7 @@ export default function App() {
     sessionIdRef.current = crypto.randomUUID();
     winnerSavedRef.current = null;
     setPlayers([]);
-    setMaxRound(3);
+    setMaxRound(1);
   };
 
   const handleWinner = (
@@ -497,6 +497,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
+            isHost={isHost}
           />
         ) : gameType === "phase10" ? (
           <Phase10Board
@@ -508,6 +509,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
+            isHost={isHost}
           />
         ) : gameType === "spades" ? (
           <SpadesBoard
@@ -521,6 +523,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
+            isHost={isHost}
           />
         ) : (
           <RoundsBoard
@@ -537,6 +540,7 @@ export default function App() {
             onWinner={handleWinner}
             onNewGame={handleNewGame}
             gameType={gameType ?? undefined}
+            isHost={isHost}
           />
         )}
       </div>

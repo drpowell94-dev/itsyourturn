@@ -31,6 +31,7 @@ type Props = {
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => void;
   onNewGame: () => void;
+  isHost: boolean;
 };
 
 const VISIBLE_ROUNDS = 3;
@@ -53,7 +54,7 @@ function isValidCount(n: number | null | undefined): n is number {
 
 export function SpadesBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  canEdit, ownerIdForNew, onWinner, onNewGame, isHost,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -206,7 +207,8 @@ export function SpadesBoard({
       if (prevRound >= 0 && players.length === 2) {
         const prev = players[0].rounds[prevRound] ?? null;
         const curr = players[1].rounds[prevRound] ?? null;
-        if ((prev !== null || curr !== null) && (prev === null || curr === null)) {
+        const shouldShow = isHost || ((prev !== null || curr !== null) && (prev === null || curr === null));
+        if (shouldShow) {
           setMissingScoresRound(prevRound);
           setShowMissingScoresDialog(true);
         }
@@ -215,7 +217,7 @@ export function SpadesBoard({
       const newOffset = Math.max(0, currentRound - 1);
       setRoundOffset(newOffset);
     }
-  }, [currentRound, players]);
+  }, [currentRound, players, isHost]);
 
   const playedRounds = (() => {
     const out: number[] = [];

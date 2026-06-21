@@ -34,13 +34,14 @@ type Props = {
   ) => void;
   onNewGame: () => void;
   gameType?: string;
+  isHost: boolean;
 };
 
 const VISIBLE_ROUNDS = 3;
 
 export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame, gameType,
+  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame, gameType, isHost,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewRound, setConfirmNewRound] = useState(false);
@@ -92,6 +93,7 @@ export function RoundsBoard({
   useEffect(() => {
     const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
     const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+    const playersWithEntry = (r: number) => players.filter((p) => p.rounds[r] != null).length;
 
     let curr = 0;
     while (roundHasAnyEntry(curr)) curr++;
@@ -101,14 +103,17 @@ export function RoundsBoard({
       prevCurrentRoundRef.current = curr;
 
       if (prevRound >= 0 && roundHasAnyEntry(prevRound) && !roundIsComplete(prevRound)) {
-        setMissingScoresRound(prevRound);
-        setShowMissingScoresDialog(true);
+        const shouldShow = isHost || playersWithEntry(prevRound) >= players.length - 1;
+        if (shouldShow) {
+          setMissingScoresRound(prevRound);
+          setShowMissingScoresDialog(true);
+        }
       }
 
       const newOffset = Math.max(0, curr - 1);
       setRoundOffset(newOffset);
     }
-  }, [players, maxRound]);
+  }, [players, maxRound, isHost]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
