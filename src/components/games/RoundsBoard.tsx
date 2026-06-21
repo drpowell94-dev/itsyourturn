@@ -319,7 +319,7 @@ export function RoundsBoard({
               : "btn-white"
           }`}
         >
-          {confirmNewRound ? "Sure?" : "New round"}
+          {confirmNewRound ? "Sure?" : "New game"}
         </button>
         <button
           onClick={() => setAddingPlayer(true)}
