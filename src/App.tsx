@@ -40,7 +40,7 @@ function getDeviceId() {
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [maxRound, setMaxRound] = useState(3);
+  const [maxRound, setMaxRound] = useState(1);
   const [targetScore, setTargetScore] = useState(200);
   const [pin, setPin] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);

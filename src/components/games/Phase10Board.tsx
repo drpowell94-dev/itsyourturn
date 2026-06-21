@@ -309,7 +309,7 @@ export function Phase10Board({
                           aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
                           className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
                             isCurrentRound
-                              ? "bg-accent-soft border-accent focus:border-accent"
+                              ? "bg-accent text-white border-accent font-semibold shadow-[0_0_0_3px_rgba(255,151,102,0.2)]"
                               : "bg-paper border-line focus:border-accent"
                           }`}
                         />
