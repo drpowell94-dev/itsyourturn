@@ -195,6 +195,10 @@ export function Phase10Board({
   let currentRound = 0;
   while (roundHasAnyEntry(currentRound)) currentRound++;
 
+  useEffect(() => {
+    if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
+  }, [currentRound, maxRound, setMaxRound]);
+
   let startedRounds = 0;
   let completedRounds = 0;
   for (let r = 0; r < maxRound; r++) {
