@@ -205,18 +205,13 @@ export function SpadesBoard({
         .map((p) => p.id);
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
-        showDialogRef.current = false;
+        showDialogRef.current = true;
       }
     }
     prevRoundRef.current = currentRound;
 
-    // Show dialog when first entry is made in new round
-    if (pendingMissing && !showDialogRef.current && roundIsFinalized(currentRound)) {
-      showDialogRef.current = true;
-    }
-
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
-  }, [currentRound, players, pendingMissing, maxRound, setMaxRound]);
+  }, [currentRound, players, maxRound, setMaxRound]);
 
   const playedRounds = (() => {
     const out: number[] = [];

@@ -107,15 +107,10 @@ export function RoundsBoard({
         .map((p) => p.id);
       if (missing.length > 0) {
         setPendingMissing({ round: prevRound, playerIds: missing });
-        showDialogRef.current = false;
+        showDialogRef.current = true;
       }
     }
     prevRoundRef.current = currentRound;
-
-    // Show dialog when first score is entered in new round
-    if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
-      showDialogRef.current = true;
-    }
 
     // Grow maxRound if needed
     if (currentRound >= maxRound) {
@@ -130,7 +125,7 @@ export function RoundsBoard({
     } else if (currentRound > visibleEnd) {
       setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
     }
-  }, [currentRound, players, pendingMissing, maxRound]);
+  }, [currentRound, players, maxRound]);
 
   const confirmAddPlayer = () => {
     if (!newPlayerInitials.trim()) return;
@@ -189,7 +184,10 @@ export function RoundsBoard({
     if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
   };
 
-  const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
+  const visibleRounds = Array.from(
+    { length: Math.min(VISIBLE_ROUNDS, Math.max(1, maxRound + 1 - roundOffset)) },
+    (_, i) => roundOffset + i
+  );
 
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
