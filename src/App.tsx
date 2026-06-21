@@ -425,8 +425,8 @@ export default function App() {
                           }}
                           className="w-full text-left flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-ink/5 transition-colors text-ink/80 hover:text-accent"
                         >
-                          <Copy size={14} />
-                          Copy invite
+                          {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
+                          {copied ? 'Copied!' : 'Copy invite'}
                         </button>
                         <button
                           onClick={() => {
