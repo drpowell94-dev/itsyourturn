@@ -363,6 +363,16 @@ export default function App() {
         />
       );
     }
+    if (gameType === "phase10") {
+      createGame(gameType, GAME_DEFAULT_TARGET[gameType]);
+      return (
+        <div className="min-h-screen bg-paper flex items-center justify-center px-5">
+          <p className="font-display font-semibold text-xl text-ink/55 fade-in">
+            Dealing the cards…
+          </p>
+        </div>
+      );
+    }
     // Standard games: show setup to configure target score
     return (
       <CustomSetup
