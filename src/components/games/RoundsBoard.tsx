@@ -207,7 +207,12 @@ export function RoundsBoard({
   let completedRounds = 0;
   for (let r = 0; r < maxRound; r++) {
     if (roundHasAnyEntry(r)) startedRounds++;
-    if (roundIsComplete(r)) completedRounds++;
+    if (roundIsComplete(r)) {
+      completedRounds++;
+    } else if (roundHasAnyEntry(r)) {
+      // Stop counting completed rounds once we hit an incomplete round
+      break;
+    }
   }
 
   const hasAnyScore = players.some((p) => p.rounds.some((r) => r != null));
@@ -225,7 +230,7 @@ export function RoundsBoard({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{completedRounds} complete</span>
+            <span className="microcap">{completedRounds}/{startedRounds} done</span>
           </div>
           <label className="microcap flex items-center gap-1.5">
             {lowWins ? "Ends at" : "To"}

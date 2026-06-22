@@ -183,7 +183,11 @@ export function Flip7Board({
   let completedRounds = 0;
   for (let r = 0; r < maxRound; r++) {
     if (roundHasAnyEntry(r)) startedRounds++;
-    if (roundIsComplete(r)) completedRounds++;
+    if (roundIsComplete(r)) {
+      completedRounds++;
+    } else if (roundHasAnyEntry(r)) {
+      break;
+    }
   }
 
   const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
@@ -198,7 +202,7 @@ export function Flip7Board({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{completedRounds} complete</span>
+            <span className="microcap">{completedRounds}/{startedRounds} done</span>
           </div>
           <div className="flex items-center gap-3">
             <label className="microcap flex items-center gap-1.5">

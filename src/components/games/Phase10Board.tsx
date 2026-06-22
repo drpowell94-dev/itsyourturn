@@ -203,7 +203,11 @@ export function Phase10Board({
   let completedRounds = 0;
   for (let r = 0; r < maxRound; r++) {
     if (roundHasAnyEntry(r)) startedRounds++;
-    if (roundIsComplete(r)) completedRounds++;
+    if (roundIsComplete(r)) {
+      completedRounds++;
+    } else if (roundHasAnyEntry(r)) {
+      break;
+    }
   }
 
   const rowGrid =
@@ -219,7 +223,7 @@ export function Phase10Board({
             <span className="microcap">
               Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">{completedRounds} complete</span>
+            <span className="microcap">{completedRounds}/{startedRounds} done</span>
           </div>
           <span className="microcap">Clear all 10 phases</span>
         </div>
