@@ -162,8 +162,8 @@ export default function App() {
   };
 
   const createGame = async (type: GameType, overrideTarget?: number, overrideRules?: CustomRules | null) => {
-    // Custom games keep whatever target the host chose in setup.
-    const initialTarget = type === "custom" ? (overrideTarget ?? targetScore) : GAME_DEFAULT_TARGET[type];
+    // Use the override target from setup screen if provided, otherwise use default
+    const initialTarget = overrideTarget ?? GAME_DEFAULT_TARGET[type];
     const rulesForInsert = overrideRules ?? customRules;
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
