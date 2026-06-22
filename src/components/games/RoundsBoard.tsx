@@ -383,8 +383,8 @@ export function RoundsBoard({
       </div>
 
       {addingPlayer && (
-        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4 overflow-y-auto">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in my-auto">
             <h2 className="font-display font-bold text-2xl mb-4">Player name</h2>
             <input
               type="text"
