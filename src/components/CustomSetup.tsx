@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
-import { GAME_LABELS, type GameType } from "@/lib/games";
+import { GAME_LABELS, GAME_DEFAULT_TARGET, type GameType } from "@/lib/games";
 
 type Props = {
   isCustom?: boolean;
@@ -11,9 +11,10 @@ type Props = {
 
 // Setup for custom games or to configure standard game target score before creating
 export function CustomSetup({ isCustom = true, gameType, onStart, onBack }: Props) {
+  const defaultTarget = gameType && gameType in GAME_DEFAULT_TARGET ? GAME_DEFAULT_TARGET[gameType as GameType] : 250;
   const [name, setName] = useState("");
   const [gameMode, setGameMode] = useState<"wins" | "loses" | "rounds">("wins");
-  const [targetDraft, setTargetDraft] = useState("250");
+  const [targetDraft, setTargetDraft] = useState(defaultTarget.toString());
   const [roundsDraft, setRoundsDraft] = useState("5");
 
   const target = targetDraft === "" ? 0 : parseInt(targetDraft, 10);
