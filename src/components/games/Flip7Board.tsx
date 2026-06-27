@@ -62,7 +62,7 @@ export function Flip7Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
 
-  // Auto-scroll to keep current round visible
+  // Auto-scroll to keep current round visible and check for missing scores
   useEffect(() => {
     const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
     const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
@@ -71,10 +71,9 @@ export function Flip7Board({
     let curr = 0;
     while (roundHasAnyEntry(curr)) curr++;
 
-    if (curr !== prevCurrentRoundRef.current) {
+    // Check for incomplete previous round only if skipping ahead by more than 1
+    if (curr > (prevCurrentRoundRef.current ?? 0) + 1) {
       const prevRound = prevCurrentRoundRef.current;
-      prevCurrentRoundRef.current = curr;
-
       if (prevRound >= 0 && roundHasAnyEntry(prevRound) && !roundIsComplete(prevRound)) {
         // For host: always show if round has entries but incomplete
         // For regular players: only show if total_players - 1 have entered
@@ -84,11 +83,12 @@ export function Flip7Board({
           setShowMissingScoresDialog(true);
         }
       }
-
-      // Center current round in viewport
-      const newOffset = Math.max(0, curr - 1);
-      setRoundOffset(newOffset);
     }
+    prevCurrentRoundRef.current = curr;
+
+    // Center current round in viewport
+    const newOffset = Math.max(0, curr - 1);
+    setRoundOffset(newOffset);
   }, [players, maxRound, isHost]);
 
   const confirmAddPlayer = () => {

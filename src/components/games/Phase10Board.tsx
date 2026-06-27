@@ -83,10 +83,9 @@ export function Phase10Board({
     let curr = 0;
     while (roundHasAnyEntry(curr)) curr++;
 
-    if (curr !== prevCurrentRoundRef.current) {
+    // Check for incomplete previous round only if skipping ahead by more than 1
+    if (curr > (prevCurrentRoundRef.current ?? 0) + 1) {
       const prevRound = prevCurrentRoundRef.current;
-      prevCurrentRoundRef.current = curr;
-
       if (prevRound >= 0 && roundHasAnyEntry(prevRound) && !roundIsComplete(prevRound)) {
         const shouldShow = isHost || playersWithEntry(prevRound) >= players.length - 1;
         if (shouldShow) {
@@ -94,10 +93,11 @@ export function Phase10Board({
           setShowMissingScoresDialog(true);
         }
       }
-
-      const newOffset = Math.max(0, curr - 1);
-      setRoundOffset(newOffset);
     }
+    prevCurrentRoundRef.current = curr;
+
+    const newOffset = Math.max(0, curr - 1);
+    setRoundOffset(newOffset);
   }, [players, maxRound, isHost]);
 
   const confirmAddPlayer = () => {
