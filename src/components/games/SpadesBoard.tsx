@@ -199,9 +199,9 @@ export function SpadesBoard({
 
   // Auto-scroll to keep current round visible and detect missing scores
   useEffect(() => {
-    if (currentRound !== prevCurrentRoundRef.current) {
+    // Check for missing scores only if skipping ahead by more than 1 round
+    if (currentRound > (prevCurrentRoundRef.current ?? 0) + 1) {
       const prevRound = prevCurrentRoundRef.current;
-      prevCurrentRoundRef.current = currentRound;
 
       // Check if previous round had any entries but wasn't fully finalized
       if (prevRound >= 0 && players.length === 2) {
@@ -213,6 +213,8 @@ export function SpadesBoard({
           setShowMissingScoresDialog(true);
         }
       }
+    }
+    prevCurrentRoundRef.current = currentRound;
 
       const newOffset = Math.max(0, currentRound - 1);
       setRoundOffset(newOffset);
