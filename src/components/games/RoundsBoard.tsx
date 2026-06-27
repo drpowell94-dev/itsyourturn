@@ -192,12 +192,12 @@ export function RoundsBoard({
     setRoundOffset(newOffset);
   };
 
-  // "Current hand" = first round where no player has a score yet.
+  // "Current hand" = first round where not all players have entered yet
   const roundHasAnyEntry = (r: number) => players.some((p) => p.rounds[r] != null);
   const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
 
   let currentRound = 0;
-  while (roundHasAnyEntry(currentRound)) currentRound++;
+  while (roundIsComplete(currentRound)) currentRound++;
 
   useEffect(() => {
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);

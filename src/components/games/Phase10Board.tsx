@@ -193,7 +193,7 @@ export function Phase10Board({
   const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
 
   let currentRound = 0;
-  while (roundHasAnyEntry(currentRound)) currentRound++;
+  while (roundIsComplete(currentRound)) currentRound++;
 
   useEffect(() => {
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
