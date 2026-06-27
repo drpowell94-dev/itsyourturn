@@ -78,7 +78,19 @@ export default function App() {
       if (updatedAt) lastSyncedAt.current = updatedAt;
       applyingRemote.current = true;
       skipNextSave.current = true;
-      setPlayers(state.players ?? []);
+      // Merge remote players with local to preserve any unsynced local scores
+      setPlayers((localPlayers) => {
+        const remotePlayers = state.players ?? [];
+        if (localPlayers.length === 0) return remotePlayers;
+        // For each remote player, merge with local if they exist
+        return remotePlayers.map((rp: Player) => {
+          const lp = localPlayers.find((p) => p.id === rp.id);
+          if (!lp) return rp;
+          // Merge rounds: prefer local non-null values over remote
+          const mergedRounds = (rp.rounds ?? []).map((r, i) => lp.rounds?.[i] ?? r);
+          return { ...rp, ...lp, rounds: mergedRounds };
+        });
+      });
       setTargetScore(state.targetScore ?? 200);
       setMaxRound(state.maxRound ?? 3);
       setHostId(state.hostId ?? null);
