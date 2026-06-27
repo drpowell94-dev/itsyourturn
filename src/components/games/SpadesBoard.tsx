@@ -216,9 +216,8 @@ export function SpadesBoard({
     }
     prevCurrentRoundRef.current = currentRound;
 
-      const newOffset = Math.max(0, currentRound - 1);
-      setRoundOffset(newOffset);
-    }
+    const newOffset = Math.max(0, currentRound - 1);
+    setRoundOffset(newOffset);
   }, [currentRound, players, isHost]);
 
   const playedRounds = (() => {
