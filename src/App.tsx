@@ -12,6 +12,7 @@ import {
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { GamePicker } from "@/components/GamePicker";
 import { CustomSetup } from "@/components/CustomSetup";
+import { TargetInput } from "@/components/TargetInput";
 import { HistoryView } from "@/components/HistoryView";
 import { Flip7Board } from "@/components/games/Flip7Board";
 import { Phase10Board } from "@/components/games/Phase10Board";
@@ -63,6 +64,8 @@ export default function App() {
   const [createError, setCreateError] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [joinInput, setJoinInput] = useState("");
+  const [pendingType, setPendingType] = useState<GameType | null>(null);
+  const [pendingTarget, setPendingTarget] = useState(200);
   const deviceId = getDeviceId();
   const sessionIdRef = useRef<string>(crypto.randomUUID());
   const winnerSavedRef = useRef<string | null>(null);
@@ -356,14 +359,25 @@ export default function App() {
   }, [players, pin, isHost, deviceId]);
 
   const handleSelectGameType = (type: GameType) => {
-    setGameType(type);
-    setTargetScore(GAME_DEFAULT_TARGET[type]);
-    Promise.resolve().then(() => createGame(type));
+    if (type === "custom") {
+      setGameType(type);
+      Promise.resolve().then(() => createGame(type, GAME_DEFAULT_TARGET[type]));
+    } else {
+      setPendingType(type);
+      setPendingTarget(GAME_DEFAULT_TARGET[type]);
+    }
   };
 
-  const createGame = async (type: GameType) => {
-    // Custom games keep whatever target the host chose in setup.
-    const initialTarget = type === "custom" ? targetScore : GAME_DEFAULT_TARGET[type];
+  const startGame = (type: GameType, target: number) => {
+    setPendingType(null);
+    setGameType(type);
+    setTargetScore(target);
+    setCreateError(false);
+    Promise.resolve().then(() => createGame(type, target));
+  };
+
+  const createGame = async (type: GameType, target?: number) => {
+    const initialTarget = target ?? targetScore;
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const { data, error } = await supabase
@@ -394,6 +408,7 @@ export default function App() {
         setPin(newPin);
         return;
       }
+      console.error("createGame error:", error);
       if ((error as any).code !== "23505") break;
     }
     setCreateError(true);
@@ -424,11 +439,13 @@ export default function App() {
   };
 
   const backToPicker = () => {
+    setPendingType(null);
     setGameType(null);
     setCustomRules(null);
     setPlayers([]);
     setMaxRound(3);
     setTargetScore(200);
+    setCreateError(false);
     sessionIdRef.current = crypto.randomUUID();
     winnerSavedRef.current = null;
   };
@@ -532,13 +549,56 @@ export default function App() {
   }
 
   // ── Landing: pick a game ────────────────────────────────────────────
-  if (!pin && !gameType) {
+  if (!pin && !gameType && !pendingType) {
     return (
       <GamePicker
         onSelect={handleSelectGameType}
         onJoin={joinGame}
         onArchive={() => setShowArchive(true)}
       />
+    );
+  }
+
+  // ── Game setup: set target score before starting ────────────────────
+  if (pendingType && !gameType) {
+    const label = GAME_LABELS[pendingType];
+    return (
+      <div className="min-h-screen bg-paper flex justify-center px-5 py-10 sm:py-14">
+        <div className="w-full max-w-sm fade-in">
+          <button
+            onClick={backToPicker}
+            className="flex items-center gap-1.5 text-sm text-ink/60 hover:text-accent transition-colors mb-8"
+          >
+            <ArrowLeft size={15} /> Back
+          </button>
+          <div className="microcap mb-1.5">Game setup · <span className="text-accent">{label}</span></div>
+          <h1 className="font-display font-bold text-4xl tracking-tight mb-8">{label}</h1>
+          <div className="card-pop p-5 mb-5">
+            <label className="block text-xs font-semibold text-ink/60 mb-3">Target score</label>
+            <div className="flex items-center gap-3">
+              <TargetInput
+                value={pendingTarget}
+                onCommit={setPendingTarget}
+                maxDigits={5}
+                label="Target score"
+                className="w-28 text-center font-mono font-bold text-2xl bg-paper border-2 border-line rounded-xl focus:border-accent outline-none py-2.5 transition-colors"
+              />
+              <span className="text-ink/50 text-sm">points to win</span>
+            </div>
+          </div>
+          {createError && (
+            <p className="mb-4 text-sm font-semibold text-coral">
+              Couldn&rsquo;t create a table — check your connection and try again.
+            </p>
+          )}
+          <button
+            onClick={() => startGame(pendingType, pendingTarget)}
+            className="btn btn-accent w-full py-3 text-base flex items-center justify-center gap-2"
+          >
+            Deal me in <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
     );
   }
 
