@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreHorizontal, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
 import {
@@ -63,6 +63,8 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const [showPinMenu, setShowPinMenu] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [joinInput, setJoinInput] = useState("");
   const [pendingType, setPendingType] = useState<GameType | null>(null);
@@ -683,26 +685,50 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2">
             {pin && (
-              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
-                <span className="microcap">Table</span>
-                <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
-                  {pin}
-                </span>
-                <button
-                  onClick={copyInvite}
-                  aria-label="Copy invite link"
-                  className="text-ink/40 hover:text-accent transition-colors"
-                >
-                  {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
-                </button>
-                <span className="w-px h-4 bg-line" />
-                <button
-                  onClick={leaveGame}
-                  aria-label="Leave table"
-                  className="text-ink/40 hover:text-coral transition-colors"
-                >
-                  <LogOut size={14} />
-                </button>
+              <div className="relative">
+                <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
+                  <span className="microcap">Table</span>
+                  <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
+                    {pin}
+                  </span>
+                  <button
+                    onClick={() => setShowPinMenu((v) => !v)}
+                    aria-label="Table options"
+                    className="text-ink/40 hover:text-accent transition-colors"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                </div>
+                {showPinMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowPinMenu(false)} />
+                    <div className="absolute right-0 top-full mt-2 z-40 w-48 bg-surface border-2 border-ink rounded-xl shadow-[0_4px_0_var(--ink)] overflow-hidden fade-in">
+                      <button
+                        onClick={() => { copyInvite(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors text-left"
+                      >
+                        {copied ? <Check size={15} className="text-accent" /> : <Copy size={15} />}
+                        Copy invite
+                      </button>
+                      {gameType && GAME_INSTRUCTIONS[gameType] && (
+                        <button
+                          onClick={() => { setShowHowToPlay(true); setShowPinMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left"
+                        >
+                          <BookOpen size={15} />
+                          How to play
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { leaveGame(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left text-coral"
+                      >
+                        <LogOut size={15} />
+                        Leave table
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <button
@@ -861,6 +887,22 @@ export default function App() {
               className="w-full mt-2.5 text-xs text-ink/50 underline underline-offset-4 decoration-line hover:text-accent hover:decoration-current transition-colors"
             >
               Just watching
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showHowToPlay && gameType && GAME_INSTRUCTIONS[gameType] && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <div className="microcap mb-1">How to play</div>
+            <h2 className="font-display font-bold text-2xl mb-4">{title}</h2>
+            <p className="text-sm text-ink/75 leading-relaxed mb-5">{GAME_INSTRUCTIONS[gameType]}</p>
+            <button
+              onClick={() => setShowHowToPlay(false)}
+              className="btn btn-accent w-full py-2.5 text-sm"
+            >
+              Got it
             </button>
           </div>
         </div>
