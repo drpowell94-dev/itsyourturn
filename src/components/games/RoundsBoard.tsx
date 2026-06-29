@@ -201,7 +201,7 @@ export function RoundsBoard({
 
   const rowGrid =
     "grid grid-cols-[3.2rem_3.6rem_1fr_2rem] sm:grid-cols-[4.5rem_4.5rem_1fr_2.5rem] gap-2 items-center";
-  const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
+  const roundsGrid = "grid grid-cols-3 gap-1 items-center";
 
   return (
     <>
@@ -246,7 +246,6 @@ export function RoundsBoard({
           <span className="microcap">Player</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
-            <span />
             {visibleRounds.map((r) => (
               <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
@@ -290,7 +289,6 @@ export function RoundsBoard({
                     {total(pl)}
                   </span>
                   <div className={roundsGrid}>
-                    <span />
                     {visibleRounds.map((r) => {
                       const isCurrentRound = r === currentRound;
                       return (
@@ -313,7 +311,6 @@ export function RoundsBoard({
                         />
                       );
                     })}
-                    <span />
                   </div>
                   <button
                     onClick={() => removePlayer(pl.id)}

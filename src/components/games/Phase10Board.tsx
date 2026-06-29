@@ -215,7 +215,7 @@ export function Phase10Board({
 
   const rowGrid =
     "grid grid-cols-[3rem_4.5rem_2.5rem_1fr_1.75rem] sm:grid-cols-[4.5rem_5.5rem_3.5rem_1fr_2.5rem] gap-1.5 sm:gap-2 items-center";
-  const roundsGrid = "grid grid-cols-[1.25rem_repeat(3,minmax(0,1fr))_1.25rem] gap-1 items-center";
+  const roundsGrid = "grid grid-cols-3 gap-1 items-center";
 
   return (
     <>
@@ -245,7 +245,6 @@ export function Phase10Board({
           <span className="microcap text-center">Phase</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
-            <span />
             {visibleRounds.map((r) => (
               <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
@@ -314,7 +313,6 @@ export function Phase10Board({
                     {total(pl)}
                   </span>
                   <div className={roundsGrid}>
-                    <span />
                     {visibleRounds.map((r) => {
                       const isCurrentRound = r === currentRound;
                       return (
@@ -337,7 +335,6 @@ export function Phase10Board({
                         />
                       );
                     })}
-                    <span />
                   </div>
                   <button
                     onClick={() => removePlayer(pl.id)}
