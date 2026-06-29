@@ -59,12 +59,10 @@ export function Flip7Board({
     if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
-  // Calculate current round. A round only becomes "current" once every
-  // player has scored the previous one, so the highlight can't outrun
-  // players who haven't entered their score yet.
+  // Calculate current round
   const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
   let currentRound = 0;
-  while (roundIsComplete(currentRound)) currentRound++;
+  while (handIsPlayed(currentRound)) currentRound++;
 
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
@@ -178,7 +176,7 @@ export function Flip7Board({
   );
 
   let playedHandsCount = 0;
-  for (let r = 0; r < maxRound; r++) if (roundIsComplete(r)) playedHandsCount++;
+  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
   const rowGrid = "grid grid-cols-[3.2rem_3rem_1fr_2rem] sm:grid-cols-[4.5rem_4rem_1fr_2.5rem] gap-2 items-center";
   const roundsGrid = "grid grid-cols-3 gap-1 items-center";

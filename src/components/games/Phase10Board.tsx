@@ -86,12 +86,10 @@ export function Phase10Board({
     if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
-  // Calculate current round. A round only becomes "current" once every
-  // player has scored the previous one, so the highlight can't outrun
-  // players who haven't entered their score yet.
+  // Calculate current round
   const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
   let currentRound = 0;
-  while (roundIsComplete(currentRound)) currentRound++;
+  while (handIsPlayed(currentRound)) currentRound++;
 
   // Auto-scroll to keep currentRound visible and check for missing scores
   useEffect(() => {
@@ -206,7 +204,7 @@ export function Phase10Board({
   );
 
   let playedHandsCount = 0;
-  for (let r = 0; r < maxRound; r++) if (roundIsComplete(r)) playedHandsCount++;
+  for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
   const rowGrid =
     "grid grid-cols-[3rem_4.5rem_2.5rem_1fr_1.75rem] sm:grid-cols-[4.5rem_5.5rem_3.5rem_1fr_2.5rem] gap-1.5 sm:gap-2 items-center";
