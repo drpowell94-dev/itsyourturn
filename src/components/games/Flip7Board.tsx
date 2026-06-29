@@ -48,7 +48,7 @@ export function Flip7Board({
 
   const total = (pl: Flip7Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   // A round only counts toward ranking once every player has scored it.
-  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+  const roundIsComplete = (r: number) => players.every((p) => p.rounds[r] != null);
   const rankedTotal = (pl: Flip7Player) =>
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
   const sorted = [...players].sort((a, b) => rankedTotal(b) - rankedTotal(a));
