@@ -246,6 +246,7 @@ export function RoundsBoard({
           <span className="microcap">Player</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
+            <span />
             {visibleRounds.map((r) => (
               <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
