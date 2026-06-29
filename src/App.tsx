@@ -38,6 +38,17 @@ function getDeviceId() {
   return id;
 }
 
+// Everything except id and ownerId — what gets stored in game_players.state.
+function playerToRowState(player: Player) {
+  const { id: _id, ownerId: _ownerId, ...state } = player;
+  return state;
+}
+
+// Reconstruct a Player from a game_players row.
+function rowToPlayer(row: any): Player {
+  return { id: row.player_id, ownerId: row.owner_id ?? null, ...row.state };
+}
+
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [maxRound, setMaxRound] = useState(3);
@@ -51,11 +62,21 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
   const deviceId = getDeviceId();
-  const applyingRemote = useRef(false);
-  const skipNextSave = useRef(true);
-  const lastSyncedAt = useRef<string>("");
-  const applyRef = useRef<(s: any, u?: string) => void>(() => {});
   const sessionIdRef = useRef<string>(crypto.randomUUID());
+
+  // Session-level sync state (games table).
+  const applyRef = useRef<(s: any, u?: string) => void>(() => {});
+  const lastSyncedAt = useRef<string>("");
+  const skipNextSessionSave = useRef(true);
+
+  // Per-player sync state (game_players table).
+  // Each map is keyed by player_id and tracks what we last successfully
+  // pushed to the server. The push effect compares current local state
+  // against these snapshots to find what changed.
+  const rowUpdatedAt = useRef<Map<string, string>>(new Map());       // CAS token per row
+  const rowStateSent = useRef<Map<string, string>>(new Map());       // JSON of last-pushed state
+  const rowOwnerSent = useRef<Map<string, string | null>>(new Map()); // last-pushed owner_id
+  const rowSeq = useRef<Map<string, number>>(new Map());             // insertion order
 
   // Read pin from URL on mount.
   useEffect(() => {
@@ -64,83 +85,156 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Subscribe + initial load when pin changes.
+  // Subscribe to games (session fields) + game_players (per-player rows).
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
-    const apply = (state: any, updatedAt?: string) => {
-      if (!state || cancelled) return;
+
+    // Apply session-level state from the games row.
+    const applySession = (s: any, updatedAt?: string) => {
+      if (!s || cancelled) return;
       if (updatedAt && lastSyncedAt.current && updatedAt < lastSyncedAt.current) return;
       if (updatedAt) lastSyncedAt.current = updatedAt;
-      applyingRemote.current = true;
-      skipNextSave.current = true;
-      setPlayers(state.players ?? []);
-      setTargetScore(state.targetScore ?? 200);
-      setMaxRound(state.maxRound ?? 3);
-      setHostId(state.hostId ?? null);
-      setCustomRules(state.customRules ?? null);
-      if (isGameType(state.gameType)) setGameType(state.gameType);
-      setTimeout(() => (applyingRemote.current = false), 0);
+      skipNextSessionSave.current = true;
+      setTargetScore(s.targetScore ?? 200);
+      setMaxRound(s.maxRound ?? 3);
+      setHostId(s.hostId ?? null);
+      setCustomRules(s.customRules ?? null);
+      if (isGameType(s.gameType)) setGameType(s.gameType);
     };
-    applyRef.current = apply;
-    const channel = supabase
+    applyRef.current = applySession;
+
+    // Apply a single incoming player row (INSERT or UPDATE).
+    // We update the tracking refs BEFORE calling setPlayers so that the
+    // player push effect sees "no change" for this player and skips it.
+    const applyRow = (row: any) => {
+      if (cancelled) return;
+      rowUpdatedAt.current.set(row.player_id, row.updated_at);
+      rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
+      rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
+      if (row.seq) rowSeq.current.set(row.player_id, row.seq);
+      setPlayers(prev => {
+        const idx = prev.findIndex(p => p.id === row.player_id);
+        const player = rowToPlayer(row);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = player;
+          return next;
+        }
+        // New player from another device — insert in seq order.
+        return [...prev, player].sort(
+          (a, b) => (rowSeq.current.get(a.id) ?? 0) - (rowSeq.current.get(b.id) ?? 0),
+        );
+      });
+    };
+
+    const removeRow = (playerId: string) => {
+      if (cancelled) return;
+      rowUpdatedAt.current.delete(playerId);
+      rowStateSent.current.delete(playerId);
+      rowOwnerSent.current.delete(playerId);
+      rowSeq.current.delete(playerId);
+      setPlayers(prev => prev.filter(p => p.id !== playerId));
+    };
+
+    // Subscribe to session-level changes.
+    const gameCh = supabase
       .channel(`game-${pin}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "games", filter: `pin=eq.${pin}` },
+        (payload: any) => applySession(payload.new?.state, payload.new?.updated_at),
+      )
+      .subscribe();
+
+    // Subscribe to per-player row changes.
+    const playerCh = supabase
+      .channel(`players-${pin}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
-          apply(payload.new?.state, payload.new?.updated_at);
+          rowSeq.current.set(payload.new.player_id, payload.new.seq);
+          applyRow(payload.new);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        (payload: any) => applyRow(payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        (payload: any) => {
+          if (payload.old?.player_id) removeRow(payload.old.player_id);
         },
       )
       .subscribe();
-    supabase
-      .from("games")
-      .select("state, updated_at, game_type")
-      .eq("pin", pin)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.state) {
-          const s: any = data.state;
-          // Fallback: read game_type from column if missing from state.
-          if (!isGameType(s.gameType) && isGameType((data as any).game_type)) {
-            s.gameType = (data as any).game_type;
-          }
-          apply(s, data.updated_at as string);
-          const host = s.hostId && s.hostId === deviceId;
-          const owns = (s.players ?? []).some((p: any) => p.ownerId === deviceId);
-          if (!host && !owns) setShowClaim(true);
-        }
-      });
+
+    // Initial load — fetch session and player rows in parallel.
+    Promise.all([
+      supabase.from("games").select("state, updated_at, game_type").eq("pin", pin).maybeSingle(),
+      supabase.from("game_players").select("*").eq("pin", pin).order("seq"),
+    ]).then(([{ data: gameData }, { data: playerData }]) => {
+      if (cancelled) return;
+
+      if (gameData?.state) {
+        const s: any = gameData.state;
+        // Fallback: read game_type from the column if missing from state blob.
+        if (!isGameType(s.gameType) && isGameType((gameData as any).game_type))
+          s.gameType = (gameData as any).game_type;
+        applySession(s, gameData.updated_at as string);
+      }
+
+      if (playerData?.length) {
+        playerData.forEach(row => {
+          rowUpdatedAt.current.set(row.player_id, row.updated_at);
+          rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
+          rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
+          rowSeq.current.set(row.player_id, row.seq);
+        });
+        setPlayers(playerData.map(rowToPlayer));
+      }
+
+      // Prompt guests who haven't claimed a seat yet.
+      const isHostDevice = gameData?.state?.hostId === deviceId;
+      const ownsASeat = (playerData ?? []).some(r => r.owner_id === deviceId);
+      if (!isHostDevice && !ownsASeat) setShowClaim(true);
+    });
+
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(gameCh);
+      supabase.removeChannel(playerCh);
     };
   }, [pin, deviceId]);
 
-  // Debounced push with optimistic concurrency (CAS on updated_at).
+  // Debounced push for session-level fields → games table.
+  // Player data is no longer in this payload; only targetScore, maxRound, etc.
   useEffect(() => {
     if (!pin || !gameType) return;
-    if (skipNextSave.current) {
-      skipNextSave.current = false;
+    if (skipNextSessionSave.current) {
+      skipNextSessionSave.current = false;
       return;
     }
-    if (applyingRemote.current) return;
     const t = setTimeout(async () => {
       const updated_at = new Date().toISOString();
       const prev = lastSyncedAt.current;
       let q = supabase
         .from("games")
         .update({
-          state: { players, targetScore, maxRound, hostId, gameType, customRules },
+          state: { targetScore, maxRound, hostId, gameType, customRules },
           game_type: gameType,
           updated_at,
         })
         .eq("pin", pin);
       if (prev) q = q.eq("updated_at", prev);
       const { data, error } = await q.select("updated_at");
-      if (!error && data && data.length > 0) {
+      if (!error && data?.length) {
         lastSyncedAt.current = updated_at;
       } else if (!error) {
+        // Lost the CAS race — apply the winner's state.
         const { data: latest } = await supabase
           .from("games")
           .select("state, updated_at")
@@ -150,7 +244,111 @@ export default function App() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [players, targetScore, maxRound, pin, hostId, gameType, customRules]);
+  }, [targetScore, maxRound, pin, hostId, gameType, customRules]);
+
+  // Debounced push for player data → game_players table (one row per player).
+  // Each device only writes rows it has permission to write.
+  // Since rows are independent, two players editing simultaneously never conflict.
+  useEffect(() => {
+    if (!pin) return;
+    const t = setTimeout(async () => {
+      const currentIds = new Set(players.map(p => p.id));
+
+      // Insertions and updates.
+      for (const player of players) {
+        const canWrite = isHost || player.ownerId === deviceId;
+        if (!canWrite) continue;
+
+        const stateJson = JSON.stringify(playerToRowState(player));
+        const prevJson = rowStateSent.current.get(player.id);
+        const existingUpdatedAt = rowUpdatedAt.current.get(player.id);
+        const ownerChanged = (player.ownerId ?? null) !== (rowOwnerSent.current.get(player.id) ?? null);
+
+        if (existingUpdatedAt === undefined) {
+          // New player — INSERT.
+          const { data, error } = await supabase
+            .from("game_players")
+            .insert({
+              pin,
+              player_id: player.id,
+              owner_id: player.ownerId ?? null,
+              state: playerToRowState(player),
+            })
+            .select("updated_at, seq")
+            .maybeSingle();
+          if (!error && data) {
+            rowUpdatedAt.current.set(player.id, data.updated_at);
+            rowStateSent.current.set(player.id, stateJson);
+            rowOwnerSent.current.set(player.id, player.ownerId ?? null);
+            rowSeq.current.set(player.id, data.seq);
+          } else if ((error as any)?.code === "23505") {
+            // Row already exists (rare race) — fetch and apply remote.
+            const { data: existing } = await supabase
+              .from("game_players")
+              .select("*")
+              .eq("pin", pin)
+              .eq("player_id", player.id)
+              .maybeSingle();
+            if (existing) {
+              rowUpdatedAt.current.set(existing.player_id, existing.updated_at);
+              rowStateSent.current.set(existing.player_id, JSON.stringify(existing.state));
+              rowOwnerSent.current.set(existing.player_id, existing.owner_id ?? null);
+              rowSeq.current.set(existing.player_id, existing.seq);
+              setPlayers(prev => prev.map(p => p.id === player.id ? rowToPlayer(existing) : p));
+            }
+          }
+        } else if (stateJson !== prevJson || ownerChanged) {
+          // Changed player — UPDATE with per-row CAS on updated_at.
+          const newUpdatedAt = new Date().toISOString();
+          let q = supabase
+            .from("game_players")
+            .update({
+              state: playerToRowState(player),
+              owner_id: player.ownerId ?? null,
+              updated_at: newUpdatedAt,
+            })
+            .eq("pin", pin)
+            .eq("player_id", player.id);
+          if (existingUpdatedAt) q = q.eq("updated_at", existingUpdatedAt);
+          const { data, error } = await q.select("updated_at");
+          if (!error && data?.length) {
+            rowUpdatedAt.current.set(player.id, newUpdatedAt);
+            rowStateSent.current.set(player.id, stateJson);
+            rowOwnerSent.current.set(player.id, player.ownerId ?? null);
+          } else if (!error) {
+            // Lost the CAS race — fetch the winner's row and apply it locally.
+            const { data: latest } = await supabase
+              .from("game_players")
+              .select("*")
+              .eq("pin", pin)
+              .eq("player_id", player.id)
+              .maybeSingle();
+            if (latest) {
+              rowUpdatedAt.current.set(latest.player_id, latest.updated_at);
+              rowStateSent.current.set(latest.player_id, JSON.stringify(latest.state));
+              rowOwnerSent.current.set(latest.player_id, latest.owner_id ?? null);
+              setPlayers(prev =>
+                prev.map(p => p.id === latest.player_id ? rowToPlayer(latest) : p),
+              );
+            }
+          }
+        }
+      }
+
+      // Deletions — rows we were tracking that are no longer in the players array.
+      for (const [pid] of rowUpdatedAt.current) {
+        if (currentIds.has(pid)) continue;
+        const wasOwner = rowOwnerSent.current.get(pid);
+        if (!isHost && wasOwner !== deviceId) continue;
+        await supabase.from("game_players").delete().eq("pin", pin).eq("player_id", pid);
+        rowUpdatedAt.current.delete(pid);
+        rowStateSent.current.delete(pid);
+        rowOwnerSent.current.delete(pid);
+        rowSeq.current.delete(pid);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [players, pin, isHost, deviceId]);
 
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
@@ -168,7 +366,6 @@ export default function App() {
           pin: newPin,
           game_type: type,
           state: {
-            players: [],
             targetScore: initialTarget,
             maxRound: 3,
             hostId: deviceId,
@@ -179,7 +376,7 @@ export default function App() {
         .select("updated_at")
         .single();
       if (!error) {
-        skipNextSave.current = true;
+        skipNextSessionSave.current = true;
         lastSyncedAt.current = (data?.updated_at as string) || "";
         sessionIdRef.current = crypto.randomUUID();
         setPlayers([]);
@@ -209,9 +406,14 @@ export default function App() {
     setGameType(null);
     setCustomRules(null);
     window.history.replaceState(null, "", window.location.pathname);
-    skipNextSave.current = true;
+    skipNextSessionSave.current = true;
+    lastSyncedAt.current = "";
     setPlayers([]);
     setMaxRound(3);
+    rowUpdatedAt.current.clear();
+    rowStateSent.current.clear();
+    rowOwnerSent.current.clear();
+    rowSeq.current.clear();
   };
 
   const backToPicker = () => {
@@ -246,8 +448,6 @@ export default function App() {
   };
 
   const handleNewGame = () => {
-    // Boards persist via onWinner; manual new-game resets just clear local
-    // state (history already includes prior wins).
     sessionIdRef.current = crypto.randomUUID();
     setPlayers([]);
     setMaxRound(3);
