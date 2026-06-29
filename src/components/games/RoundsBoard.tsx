@@ -6,6 +6,7 @@ import { Confetti } from "@/components/Confetti";
 import { Reader } from "@/components/Reader";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { roundsReader } from "@/lib/reader";
+import { GameInstructionsToggle } from "@/components/GameInstructions";
 
 export type RoundsPlayer = {
   id: string;
@@ -26,6 +27,7 @@ type Props = {
   lowWins: boolean;
   /** Game-specific hand calculator keypad; omit to hide the calculator. */
   calcConfig?: CalcConfig;
+  instructions?: string;
   canEdit: (p: RoundsPlayer) => boolean;
   ownerIdForNew: string | null;
   onWinner: (
@@ -40,9 +42,10 @@ const VISIBLE_ROUNDS = 3;
 
 export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame, gameType,
+  lowWins, calcConfig, instructions, canEdit, ownerIdForNew, onWinner, onNewGame, gameType,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [showInstructions, setShowInstructions] = useState(false);
   const [confirmNewRound, setConfirmNewRound] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
@@ -214,16 +217,30 @@ export function RoundsBoard({
             </span>
             <span className="microcap">{playedHandsCount} completed</span>
           </div>
-          <label className="microcap flex items-center gap-1.5">
-            {lowWins ? "Ends at" : "To"}
-            <TargetInput
-              value={targetScore}
-              onCommit={setTargetScore}
-              maxDigits={5}
-              className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-            />
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="microcap flex items-center gap-1.5">
+              {lowWins ? "Ends at" : "To"}
+              <TargetInput
+                value={targetScore}
+                onCommit={setTargetScore}
+                maxDigits={5}
+                className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+              />
+            </label>
+            {instructions && (
+              <GameInstructionsToggle
+                instructions={instructions}
+                isOpen={showInstructions}
+                setIsOpen={setShowInstructions}
+              />
+            )}
+          </div>
         </div>
+        {showInstructions && instructions && (
+          <div className="px-3 sm:px-4 py-3 border-b border-line bg-surface/50">
+            <p className="text-[13px] leading-relaxed text-ink/75">{instructions}</p>
+          </div>
+        )}
 
         {winner && winner.initials && (
           <div className={`px-3 sm:px-4 py-2.5 border-b border-line ${
