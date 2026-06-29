@@ -67,14 +67,16 @@ export function RoundsBoard({
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
   // Standings frozen until the round is fully scored.
   const sorted = [...players].sort((a, b) => (lowWins ? rankedTotal(a) - rankedTotal(b) : rankedTotal(b) - rankedTotal(a)));
-  const gameOver = players.some((p) => rankedTotal(p) >= targetScore);
+  const gameOver = players.some((p) => total(p) >= targetScore);
   let winner = null;
-  if (gameOver && sorted.length > 0) {
+  if (gameOver && players.length > 0) {
     if (gameType === "uno") {
-      // UNO: highest scorer busted — they're the loser.
-      winner = [...players].sort((a, b) => rankedTotal(b) - rankedTotal(a))[0];
+      winner = [...players].sort((a, b) => total(b) - total(a))[0];
+    } else if (lowWins) {
+      winner = [...players].sort((a, b) => total(a) - total(b))[0];
     } else {
-      winner = sorted[0];
+      const over = players.filter((p) => total(p) >= targetScore);
+      winner = over.length > 0 ? over.reduce((best, p) => (total(p) > total(best) ? p : best)) : null;
     }
   }
 

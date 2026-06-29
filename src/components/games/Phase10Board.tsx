@@ -69,7 +69,7 @@ export function Phase10Board({
   // Winner: any player with phase > 10. If multiple, lowest completed-round total wins.
   const finished = players.filter((p) => phaseOf(p) > 10);
   const winner = finished.length > 0
-    ? [...finished].sort((a, b) => rankedTotal(a) - rankedTotal(b))[0]
+    ? [...finished].sort((a, b) => total(a) - total(b))[0]
     : null;
 
   // Sort: finished first, then by furthest phase, then by lowest completed-round total.

@@ -52,7 +52,11 @@ export function Flip7Board({
   const rankedTotal = (pl: Flip7Player) =>
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
   const sorted = [...players].sort((a, b) => rankedTotal(b) - rankedTotal(a));
-  const winner = sorted.length > 0 && rankedTotal(sorted[0]) >= targetScore ? sorted[0] : null;
+  const winner = (() => {
+    const over = players.filter((p) => total(p) >= targetScore);
+    if (over.length === 0) return null;
+    return over.reduce((best, p) => (total(p) > total(best) ? p : best));
+  })();
 
   const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
