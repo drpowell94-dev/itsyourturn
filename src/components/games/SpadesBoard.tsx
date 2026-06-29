@@ -4,8 +4,6 @@ import { Confetti } from "@/components/Confetti";
 import { TargetInput, selectOnFocus } from "@/components/TargetInput";
 import { Reader } from "@/components/Reader";
 import { spadesReader } from "@/lib/reader";
-import { GameInstructionsToggle } from "@/components/GameInstructions";
-import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
 export type SpadesPlayer = {
   id: string;
@@ -58,7 +56,6 @@ export function SpadesBoard({
   canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
-  const [showInstructions, setShowInstructions] = useState(false);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
   const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
   const prevRoundRef = useRef<number>(-1);
@@ -335,18 +332,8 @@ export function SpadesBoard({
                 className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
               />
             </label>
-            <GameInstructionsToggle
-              instructions={GAME_INSTRUCTIONS.spades}
-              isOpen={showInstructions}
-              setIsOpen={setShowInstructions}
-            />
           </div>
         </div>
-        {showInstructions && (
-          <div className="px-3 sm:px-4 py-3 border-b border-line bg-surface/50">
-            <p className="text-[13px] leading-relaxed text-ink/75">{GAME_INSTRUCTIONS.spades}</p>
-          </div>
-        )}
 
         {winner && winner.initials && (
           <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">

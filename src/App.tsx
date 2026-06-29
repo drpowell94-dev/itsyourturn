@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreHorizontal, BookOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreVertical, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
 import {
@@ -590,8 +590,23 @@ export default function App() {
             <ArrowLeft size={15} /> Back
           </button>
           <div className="microcap mb-1.5">Game setup · <span className="text-accent">{label}</span></div>
-          <h1 className="font-display font-bold text-4xl tracking-tight mb-8">{label}</h1>
-          {pendingType !== "phase10" && (
+          <h1 className="font-display font-bold text-4xl tracking-tight mb-5">{label}</h1>
+          {GAME_INSTRUCTIONS[pendingType] && (
+            <p className="text-sm text-ink/65 leading-relaxed mb-5">{GAME_INSTRUCTIONS[pendingType]}</p>
+          )}
+          {pendingType === "phase10" ? (
+            <div className="card-pop p-5 mb-5">
+              <div className="microcap mb-3">The 10 phases</div>
+              <ul className="space-y-1.5">
+                {["2 sets of 3","1 set of 3 + 1 run of 4","1 set of 4 + 1 run of 4","1 run of 7","1 run of 8","1 run of 9","2 sets of 4","7 cards of one color","1 set of 5 + 1 set of 2","1 set of 5 + 1 set of 3"].map((p, i) => (
+                  <li key={i} className="flex items-baseline gap-2.5 text-sm">
+                    <span className="font-mono font-semibold text-accent w-5 shrink-0 tabular-nums">{i + 1}</span>
+                    <span className="text-ink/75">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
             <div className="card-pop p-5 mb-5">
               <label className="block text-xs font-semibold text-ink/60 mb-3">
                 {pendingType === "hearts" ? "Ends at score" : "Target score"}
@@ -696,13 +711,13 @@ export default function App() {
                     aria-label="Table options"
                     className="text-ink/40 hover:text-accent transition-colors"
                   >
-                    <MoreHorizontal size={16} />
+                    <MoreVertical size={16} />
                   </button>
                 </div>
                 {showPinMenu && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setShowPinMenu(false)} />
-                    <div className="absolute right-0 top-full mt-2 z-40 w-48 bg-surface border-2 border-ink rounded-xl shadow-[0_4px_0_var(--ink)] overflow-hidden fade-in">
+                    <div className="absolute left-0 top-full mt-2 z-40 w-52 bg-surface border-2 border-ink rounded-xl shadow-[0_4px_0_var(--ink)] overflow-hidden fade-in">
                       <button
                         onClick={() => { copyInvite(); setShowPinMenu(false); }}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors text-left"
@@ -819,7 +834,6 @@ export default function App() {
             setTargetScore={setTargetScore}
             lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
             calcConfig={CALC_CONFIGS[gameType!]}
-            instructions={GAME_INSTRUCTIONS[gameType!]}
             canEdit={canEdit}
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
