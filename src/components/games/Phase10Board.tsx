@@ -62,7 +62,7 @@ export function Phase10Board({
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
 
   // A round only counts toward ranking once every player has scored it.
-  const roundIsComplete = (r: number) => players.every((p) => p.rounds[r] != null);
+  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
   const rankedTotal = (pl: Phase10Player) =>
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
 
