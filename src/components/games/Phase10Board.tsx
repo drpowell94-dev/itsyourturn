@@ -9,6 +9,19 @@ import { phase10Reader } from "@/lib/reader";
 import { GameInstructionsToggle } from "@/components/GameInstructions";
 import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 
+const PHASES = [
+  "2 sets of 3",
+  "1 set of 3 + 1 run of 4",
+  "1 set of 4 + 1 run of 4",
+  "1 run of 7",
+  "1 run of 8",
+  "1 run of 9",
+  "2 sets of 4",
+  "7 cards of one color",
+  "1 set of 5 + 1 set of 2",
+  "1 set of 5 + 1 set of 3",
+];
+
 export type Phase10Player = {
   id: string;
   initials: string;
@@ -38,6 +51,7 @@ export function Phase10Board({
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [showPhases, setShowPhases] = useState(false);
   const [addingPlayer, setAddingPlayer] = useState(false);
   const [newPlayerInitials, setNewPlayerInitials] = useState("");
   const [confirmNewRound, setConfirmNewRound] = useState(false);
@@ -133,17 +147,6 @@ export function Phase10Board({
     ]);
     setNewPlayerInitials("");
     setAddingPlayer(false);
-  };
-
-  const setAllCurrentRoundToZero = () => {
-    setPlayers((p) =>
-      p.map((x) => {
-        const rounds = [...x.rounds];
-        while (rounds.length <= currentRound) rounds.push(null);
-        if (rounds[currentRound] === null) rounds[currentRound] = 0;
-        return { ...x, rounds };
-      }),
-    );
   };
 
   const removePlayer = (id: string) =>
@@ -373,11 +376,10 @@ export function Phase10Board({
 
       <div className="grid grid-cols-3 gap-2 mt-5">
         <button
-          onClick={setAllCurrentRoundToZero}
+          onClick={() => setShowPhases(true)}
           className="btn btn-white py-2.5 text-sm"
-          title="Set all players to 0 for this round"
         >
-          All 0
+          See phases
         </button>
         <button
           onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
@@ -491,6 +493,29 @@ export function Phase10Board({
         onAssign={addScoreToPlayer}
       />
       <Confetti active={!!winner} />
+
+      {showPhases && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <div className="microcap mb-1">Phase 10</div>
+            <h2 className="font-display font-bold text-2xl mb-4">All 10 phases</h2>
+            <ul className="border-t border-line mb-5">
+              {PHASES.map((desc, i) => (
+                <li key={i} className="flex items-baseline gap-3 py-2.5 border-b border-line">
+                  <span className="font-mono font-semibold text-accent tabular-nums text-sm w-6 shrink-0">{i + 1}</span>
+                  <span className="text-sm text-ink/80">{desc}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setShowPhases(false)}
+              className="btn btn-accent w-full py-2.5 text-sm"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </>
   );
 }
