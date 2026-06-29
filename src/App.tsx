@@ -502,7 +502,6 @@ export default function App() {
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
-    if (pin && !isHost) return;
     if (pin && !gameLoadedRef.current) return;
     if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
     if (winnerInitials) winnerSavedRef.current = winnerInitials;
@@ -560,7 +559,7 @@ export default function App() {
             {pin ? `Tonight · Table ${pin}` : "On this device"}
           </div>
           <h1 className="font-display font-bold text-4xl tracking-tight mb-8">Past games</h1>
-          <HistoryView sessionId={pin ?? undefined} showClear={!pin} />
+          <HistoryView pin={pin ?? undefined} showClear={!pin} />
         </div>
       </div>
     );
@@ -796,7 +795,7 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -807,7 +806,7 @@ export default function App() {
             maxRound={maxRound}
             setMaxRound={setMaxRound}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -820,7 +819,7 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -835,7 +834,7 @@ export default function App() {
             lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
             calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
             gameType={gameType ?? undefined}
