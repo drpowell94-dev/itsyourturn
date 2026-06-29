@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
@@ -67,7 +67,8 @@ export default function App() {
   const [pendingType, setPendingType] = useState<GameType | null>(null);
   const [pendingTarget, setPendingTarget] = useState(200);
   const deviceId = getDeviceId();
-  const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  const gameLoadedRef = useRef(false);
   const winnerSavedRef = useRef<string | null>(null);
 
   // Session-level sync state (games table).
@@ -97,6 +98,7 @@ export default function App() {
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
+    gameLoadedRef.current = false;
 
     // Apply session-level state from the games row.
     const applySession = (s: any, updatedAt?: string) => {
@@ -109,6 +111,7 @@ export default function App() {
       setHostId(s.hostId ?? null);
       setCustomRules(s.customRules ?? null);
       if (isGameType(s.gameType)) setGameType(s.gameType);
+      if (s.sessionId) setSessionId(s.sessionId);
     };
     applyRef.current = applySession;
 
@@ -209,10 +212,13 @@ export default function App() {
       const isHostDevice = gameData?.state?.hostId === deviceId;
       const ownsASeat = (playerData ?? []).some(r => r.owner_id === deviceId);
       if (!isHostDevice && !ownsASeat) setShowClaim(true);
+
+      gameLoadedRef.current = true;
     });
 
     return () => {
       cancelled = true;
+      gameLoadedRef.current = false;
       supabase.removeChannel(gameCh);
       supabase.removeChannel(playerCh);
     };
@@ -232,7 +238,7 @@ export default function App() {
       let q = supabase
         .from("games")
         .update({
-          state: { targetScore, maxRound, hostId, gameType, customRules },
+          state: { targetScore, maxRound, hostId, gameType, customRules, sessionId },
           game_type: gameType,
           updated_at,
         })
@@ -252,7 +258,7 @@ export default function App() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [targetScore, maxRound, pin, hostId, gameType, customRules]);
+  }, [targetScore, maxRound, pin, hostId, gameType, customRules, sessionId]);
 
   // Debounced push for player data → game_players table (one row per player).
   // Each device only writes rows it has permission to write.
@@ -378,6 +384,7 @@ export default function App() {
 
   const createGame = async (type: GameType, target?: number) => {
     const initialTarget = target ?? targetScore;
+    const newSessionId = crypto.randomUUID();
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const { data, error } = await supabase
@@ -391,6 +398,7 @@ export default function App() {
             hostId: deviceId,
             gameType: type,
             customRules,
+            sessionId: newSessionId,
           },
         })
         .select("updated_at")
@@ -398,7 +406,7 @@ export default function App() {
       if (!error) {
         skipNextSessionSave.current = true;
         lastSyncedAt.current = (data?.updated_at as string) || "";
-        sessionIdRef.current = crypto.randomUUID();
+        setSessionId(newSessionId);
         setPlayers([]);
         setTargetScore(initialTarget);
         setMaxRound(1);
@@ -410,6 +418,10 @@ export default function App() {
       }
       console.error("createGame error:", error);
       if ((error as any).code !== "23505") break;
+    }
+    if (type !== "custom") {
+      setGameType(null);
+      setPendingType(type);
     }
     setCreateError(true);
   };
@@ -436,6 +448,8 @@ export default function App() {
     rowStateSent.current.clear();
     rowOwnerSent.current.clear();
     rowSeq.current.clear();
+    winnerSavedRef.current = null;
+    gameLoadedRef.current = false;
   };
 
   const backToPicker = () => {
@@ -446,7 +460,7 @@ export default function App() {
     setMaxRound(3);
     setTargetScore(200);
     setCreateError(false);
-    sessionIdRef.current = crypto.randomUUID();
+    setSessionId(crypto.randomUUID());
     winnerSavedRef.current = null;
   };
 
@@ -474,22 +488,23 @@ export default function App() {
   };
 
   const handleNewGame = () => {
-    sessionIdRef.current = crypto.randomUUID();
+    setSessionId(crypto.randomUUID());
     winnerSavedRef.current = null;
     setPlayers([]);
     setMaxRound(3);
   };
 
-  const handleWinner = (
+  const handleWinner = useCallback((
     winnerInitials: string | null,
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
     if (pin && !isHost) return;
+    if (pin && !gameLoadedRef.current) return;
     if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
     if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
-      sessionId: sessionIdRef.current,
+      sessionId,
       targetScore,
       players: playersPayload,
       winner: winnerInitials,
@@ -501,7 +516,7 @@ export default function App() {
         .upsert(
           {
             pin,
-            session_id: sessionIdRef.current,
+            session_id: sessionId,
             winner: winnerInitials,
             target_score: targetScore,
             players: playersPayload,
@@ -512,7 +527,7 @@ export default function App() {
         )
         .then(() => {});
     }
-  };
+  }, [gameType, pin, isHost, sessionId, targetScore]);
 
   const copyInvite = async () => {
     try {
@@ -573,19 +588,29 @@ export default function App() {
           </button>
           <div className="microcap mb-1.5">Game setup · <span className="text-accent">{label}</span></div>
           <h1 className="font-display font-bold text-4xl tracking-tight mb-8">{label}</h1>
-          <div className="card-pop p-5 mb-5">
-            <label className="block text-xs font-semibold text-ink/60 mb-3">Target score</label>
-            <div className="flex items-center gap-3">
-              <TargetInput
-                value={pendingTarget}
-                onCommit={setPendingTarget}
-                maxDigits={5}
-                label="Target score"
-                className="w-28 text-center font-mono font-bold text-2xl bg-paper border-2 border-line rounded-xl focus:border-accent outline-none py-2.5 transition-colors"
-              />
-              <span className="text-ink/50 text-sm">points to win</span>
+          {pendingType !== "phase10" && (
+            <div className="card-pop p-5 mb-5">
+              <label className="block text-xs font-semibold text-ink/60 mb-3">
+                {pendingType === "hearts" ? "Ends at score" : "Target score"}
+              </label>
+              <div className="flex items-center gap-3">
+                <TargetInput
+                  value={pendingTarget}
+                  onCommit={setPendingTarget}
+                  maxDigits={5}
+                  label="Target score"
+                  className="w-28 text-center font-mono font-bold text-2xl bg-paper border-2 border-line rounded-xl focus:border-accent outline-none py-2.5 transition-colors"
+                />
+                <span className="text-ink/50 text-sm">
+                  {pendingType === "hearts"
+                    ? "· lowest wins"
+                    : pendingType === "uno"
+                    ? "· first to bust"
+                    : "to win"}
+                </span>
+              </div>
             </div>
-          </div>
+          )}
           {createError && (
             <p className="mb-4 text-sm font-semibold text-coral">
               Couldn&rsquo;t create a table — check your connection and try again.

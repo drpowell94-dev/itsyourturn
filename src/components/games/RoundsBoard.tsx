@@ -87,7 +87,7 @@ export function RoundsBoard({
       );
     }
     if (!winner) savedWinnerRef.current = null;
-  }, [winner?.id, onWinner, sorted]);
+  }, [winner?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Calculate current round
   const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
