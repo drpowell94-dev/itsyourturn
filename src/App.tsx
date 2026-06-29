@@ -81,6 +81,8 @@ export default function App() {
   const rowOwnerSent = useRef<Map<string, string | null>>(new Map()); // last-pushed owner_id
   const rowSeq = useRef<Map<string, number>>(new Map());             // insertion order
 
+  const isHost = Boolean(!pin || (hostId && hostId === deviceId));
+
   // Read pin from URL on mount.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search).get("pin");
@@ -431,7 +433,6 @@ export default function App() {
     winnerSavedRef.current = null;
   };
 
-  const isHost = Boolean(!pin || (hostId && hostId === deviceId));
   const canEdit = (pl: Player) => !pin || isHost || pl.ownerId === deviceId;
 
   const claimPlayer = (id: string) => {
