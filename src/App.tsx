@@ -796,6 +796,7 @@ export default function App() {
             setTargetScore={setTargetScore}
             canEdit={canEdit}
             ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -807,6 +808,7 @@ export default function App() {
             setMaxRound={setMaxRound}
             canEdit={canEdit}
             ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -820,6 +822,7 @@ export default function App() {
             setTargetScore={setTargetScore}
             canEdit={canEdit}
             ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -835,6 +838,7 @@ export default function App() {
             calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
             ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
             gameType={gameType ?? undefined}

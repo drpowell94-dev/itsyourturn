@@ -26,6 +26,7 @@ type Props = {
   setTargetScore: (n: number) => void;
   canEdit: (p: SpadesPlayer) => boolean;
   ownerIdForNew: string | null;
+  isHost: boolean;
   onWinner: (
     winnerInitials: string | null,
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
@@ -53,7 +54,7 @@ function isValidCount(n: number | null | undefined): n is number {
 
 export function SpadesBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  canEdit, ownerIdForNew, isHost, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -332,21 +333,23 @@ export function SpadesBoard({
             <span className="font-display font-bold text-base">
               🏆 {winner.initials} takes the match at {total(winner)}!
             </span>
-            {savedWinnerId === winner.id ? (
-              <span className="microcap text-accent">Saved ✓</span>
-            ) : (
-              <button
-                onClick={() => {
-                  setSavedWinnerId(winner.id);
-                  onWinner(
-                    winner.initials || "???",
-                    sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
-                  );
-                }}
-                className="btn btn-accent px-3 py-1 text-xs shrink-0"
-              >
-                Save score
-              </button>
+            {isHost && (
+              savedWinnerId === winner.id ? (
+                <span className="microcap text-accent">Saved ✓</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSavedWinnerId(winner.id);
+                    onWinner(
+                      winner.initials || "???",
+                      sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+                    );
+                  }}
+                  className="btn btn-accent px-3 py-1 text-xs shrink-0"
+                >
+                  Save score
+                </button>
+              )
             )}
           </div>
         )}
