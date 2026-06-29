@@ -503,7 +503,7 @@ export default function App() {
   ) => {
     if (!gameType) return;
     if (pin && !gameLoadedRef.current) return;
-    if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
+    if (winnerSavedRef.current) return;
     if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
       sessionId,
