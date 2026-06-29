@@ -80,17 +80,9 @@ export function Phase10Board({
     return rankedTotal(a) - rankedTotal(b);
   });
 
-  const savedWinnerRef = useRef<string | null>(null);
+  const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
-    if (winner && savedWinnerRef.current !== winner.id) {
-      savedWinnerRef.current = winner.id;
-      onWinner(
-        winner.initials || "???",
-        sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
-      );
-    }
-    if (!winner) savedWinnerRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
   // Calculate current round
@@ -250,10 +242,26 @@ export function Phase10Board({
         </div>
 
         {winner && winner.initials && (
-          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+          <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
             <span className="font-display font-bold text-base">
               🏆 {winner.initials} clears phase 10 at {total(winner)} points!
             </span>
+            {savedWinnerId === winner.id ? (
+              <span className="microcap text-accent">Saved ✓</span>
+            ) : (
+              <button
+                onClick={() => {
+                  setSavedWinnerId(winner.id);
+                  onWinner(
+                    winner.initials || "???",
+                    sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+                  );
+                }}
+                className="btn btn-accent px-3 py-1 text-xs shrink-0"
+              >
+                Save score
+              </button>
+            )}
           </div>
         )}
 
