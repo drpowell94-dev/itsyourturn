@@ -28,14 +28,38 @@ export function flip7Reader(standings: Standing[], target: number): string {
   return `${name(lead)} sits at ${lead.total} — ${toGo} to go.`;
 }
 
-// Generic round-game narration. High games (UNO, Farkle, custom-high) read
+// Generic round-game narration. High games (Flip 7, Farkle, custom-high) read
 // like Flip 7; low games (Hearts, custom-low) end when anyone hits the
-// ceiling and the lowest total wins.
+// ceiling and the lowest total wins. UNO is special: first to target LOSES.
 export function roundsReader(
   standings: Standing[],
   target: number,
   lowWins: boolean,
+  gameType?: string,
 ): string {
+  // UNO: person reaching target loses, so we want to avoid high scores
+  if (gameType === "uno") {
+    if (standings.length === 0) {
+      return "Add the people at your table and I'll keep the running order.";
+    }
+    const sorted = [...standings].sort((a, b) => b.total - a.total);
+    const [lead, second] = sorted;
+    if (lead.total >= target) {
+      return `${name(lead)} busted at ${lead.total}. Game over!`;
+    }
+    if (lead.total === 0) {
+      return "No scores on the sheet yet — play defensively!";
+    }
+    const toGo = target - lead.total;
+    if (second && second.total === lead.total) {
+      return `${name(lead)} and ${name(second)} are tied at ${lead.total}. Each ${toGo} away from the danger zone.`;
+    }
+    if (second) {
+      return `${name(lead)} is closest to ${target} at ${lead.total} — ${toGo} more and they lose.`;
+    }
+    return `${name(lead)} is at ${lead.total} — stay under ${target} to win.`;
+  }
+
   if (!lowWins) return flip7Reader(standings, target);
   if (standings.length === 0) {
     return "Add the people at your table and I'll keep the running order.";

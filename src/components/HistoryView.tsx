@@ -16,6 +16,7 @@ type Row = {
   winner: string | null;
   targetScore: number;
   players: { initials: string; total: number }[];
+  gameType?: string;
 };
 
 function fromLocal(g: HistoryGame): Row {
@@ -40,7 +41,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
     const load = async () => {
       const { data } = await supabase
         .from("game_history")
-        .select("id, winner, target_score, players, completed_at")
+        .select("id, winner, target_score, players, completed_at, game_type")
         .eq("pin", sessionId)
         .order("completed_at", { ascending: false });
       if (!cancelled && data) {
@@ -51,6 +52,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
             winner: g.winner,
             targetScore: g.target_score,
             players: g.players ?? [],
+            gameType: g.game_type,
           })),
         );
       }
@@ -115,8 +117,8 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
             </div>
             {g.winner && (
               <p className="font-display font-bold text-base mb-2">
-                <span className="mr-1.5">🏆</span>
-                {g.winner} took the game!
+                <span className="mr-1.5">{g.gameType === "uno" ? "💔" : "🏆"}</span>
+                {g.gameType === "uno" ? `${g.winner} busted at ${g.targetScore}!` : `${g.winner} took the game!`}
               </p>
             )}
             <div className="flex flex-wrap gap-x-5 gap-y-1">

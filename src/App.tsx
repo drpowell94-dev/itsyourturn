@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Copy, Check, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { saveGame } from "@/lib/history";
 import {
@@ -51,7 +51,7 @@ function rowToPlayer(row: any): Player {
 
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [maxRound, setMaxRound] = useState(3);
+  const [maxRound, setMaxRound] = useState(1);
   const [targetScore, setTargetScore] = useState(200);
   const [pin, setPin] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
@@ -61,8 +61,11 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [joinInput, setJoinInput] = useState("");
   const deviceId = getDeviceId();
   const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const winnerSavedRef = useRef<string | null>(null);
 
   // Session-level sync state (games table).
   const applyRef = useRef<(s: any, u?: string) => void>(() => {});
@@ -353,6 +356,7 @@ export default function App() {
   const handleSelectGameType = (type: GameType) => {
     setGameType(type);
     setTargetScore(GAME_DEFAULT_TARGET[type]);
+    Promise.resolve().then(() => createGame(type));
   };
 
   const createGame = async (type: GameType) => {
@@ -381,7 +385,7 @@ export default function App() {
         sessionIdRef.current = crypto.randomUUID();
         setPlayers([]);
         setTargetScore(initialTarget);
-        setMaxRound(3);
+        setMaxRound(1);
         setHostId(deviceId);
         setGameType(type);
         window.history.replaceState(null, "", `?pin=${newPin}`);
@@ -396,6 +400,7 @@ export default function App() {
   const joinGame = (p: string) => {
     window.history.replaceState(null, "", `?pin=${p}`);
     setShowArchive(false);
+    setJoinInput("");
     setPin(p);
   };
 
@@ -423,6 +428,7 @@ export default function App() {
     setMaxRound(3);
     setTargetScore(200);
     sessionIdRef.current = crypto.randomUUID();
+    winnerSavedRef.current = null;
   };
 
   const isHost = Boolean(!pin || (hostId && hostId === deviceId));
@@ -434,21 +440,24 @@ export default function App() {
   };
 
   const addPlayerFromClaim = () => {
+    if (!newPlayerName.trim()) return;
     setPlayers((p) => [
       ...p,
       {
         id: crypto.randomUUID(),
-        initials: "",
+        initials: newPlayerName.trim().toUpperCase().slice(0, 3),
         rounds: Array(maxRound).fill(null),
         phase: gameType === "phase10" ? 1 : undefined,
         ownerId: pin ? deviceId : null,
       },
     ]);
+    setNewPlayerName("");
     if (pin) setShowClaim(false);
   };
 
   const handleNewGame = () => {
     sessionIdRef.current = crypto.randomUUID();
+    winnerSavedRef.current = null;
     setPlayers([]);
     setMaxRound(3);
   };
@@ -459,13 +468,16 @@ export default function App() {
   ) => {
     if (!gameType) return;
     if (pin && !isHost) return;
+    if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
+    if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
       sessionId: sessionIdRef.current,
       targetScore,
       players: playersPayload,
       winner: winnerInitials,
     });
-    if (pin) {
+    if (pin && isHost) {
+      const completed_at = new Date().toISOString();
       supabase
         .from("game_history")
         .upsert(
@@ -476,7 +488,7 @@ export default function App() {
             target_score: targetScore,
             players: playersPayload,
             game_type: gameType,
-            completed_at: new Date().toISOString(),
+            completed_at,
           },
           { onConflict: "pin,session_id" },
         )
@@ -583,7 +595,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {pin ? (
+            {pin && (
               <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
                 <span className="microcap">Table</span>
                 <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
@@ -605,28 +617,41 @@ export default function App() {
                   <LogOut size={14} />
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => createGame(gameType!)}
-                className="btn btn-accent px-4 py-2 text-sm"
-              >
-                Host a table
-              </button>
             )}
             <button
               onClick={() => setShowArchive(true)}
               className="btn btn-white px-3.5 py-2 text-sm"
             >
-              Tonight
+              Leaderboard
             </button>
           </div>
         </header>
 
         {!pin && (
-          <p className="-mt-3 mb-6 text-[13px] text-ink/55 leading-relaxed max-w-md">
-            <span className="text-ink/85">Hosting a table</span> creates a shareable 4-digit
-            PIN so everyone can follow the sheet from their own phone.
-          </p>
+          <div className="mb-6 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
+                Join a table
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="4-digit PIN"
+                maxLength={6}
+                value={joinInput}
+                onChange={(e) => setJoinInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => e.key === "Enter" && joinInput.length >= 4 && joinGame(joinInput)}
+                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2.5 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => joinGame(joinInput)}
+              disabled={joinInput.length < 4}
+              className="btn btn-accent px-4 py-2.5 text-sm disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <ArrowRight size={14} /> Join
+            </button>
+          </div>
         )}
         {createError && (
           <p className="-mt-2 mb-5 text-sm font-semibold text-coral">
@@ -685,6 +710,7 @@ export default function App() {
             ownerIdForNew={pin ? deviceId : null}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
+            gameType={gameType ?? undefined}
           />
         )}
       </div>
@@ -721,11 +747,26 @@ export default function App() {
                 })}
               </div>
             )}
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
+                Your name
+              </label>
+              <input
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value.toUpperCase().slice(0, 3))}
+                onKeyDown={(e) => e.key === "Enter" && addPlayerFromClaim()}
+                placeholder="ABC"
+                maxLength={3}
+                aria-label="Enter your name (initials)"
+                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 transition-colors"
+              />
+            </div>
             <button
               onClick={addPlayerFromClaim}
-              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5"
+              disabled={!newPlayerName.trim()}
+              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
-              <Plus size={15} /> I&rsquo;m new here
+              <Plus size={15} /> Join
             </button>
             <button
               onClick={() => setShowClaim(false)}

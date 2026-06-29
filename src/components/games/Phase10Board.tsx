@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, X, ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { Plus, X, Check } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { Confetti } from "@/components/Confetti";
@@ -35,6 +35,13 @@ export function Phase10Board({
   players, setPlayers, maxRound, setMaxRound, canEdit, ownerIdForNew, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [confirmNewRound, setConfirmNewRound] = useState(false);
+  const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
+  const prevRoundRef = useRef<number>(-1);
+  const showDialogRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
@@ -72,11 +79,69 @@ export function Phase10Board({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [winner?.id]);
 
-  const addPlayer = () =>
+  // Calculate current round
+  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  let currentRound = 0;
+  while (handIsPlayed(currentRound)) currentRound++;
+
+  // Auto-scroll to keep currentRound visible and check for missing scores
+  useEffect(() => {
+    // Blur focused input when moving to next round
+    if (prevRoundRef.current >= 0 && prevRoundRef.current !== currentRound) {
+      if (inputRef.current && inputRef.current === document.activeElement) {
+        inputRef.current.blur();
+      }
+      const prevRound = prevRoundRef.current;
+      const missing = players
+        .filter((p) => p.rounds[prevRound] == null)
+        .map((p) => p.id);
+      if (missing.length > 0) {
+        setPendingMissing({ round: prevRound, playerIds: missing });
+        showDialogRef.current = false;
+      }
+    }
+    prevRoundRef.current = currentRound;
+
+    // Show dialog when first score is entered in new round
+    if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
+      showDialogRef.current = true;
+    }
+
+    // Grow maxRound if needed
+    if (currentRound >= maxRound) {
+      setMaxRound((m) => Math.max(m, currentRound + 1));
+    }
+
+    // Auto-scroll to keep current round visible
+    const visibleStart = roundOffset;
+    const visibleEnd = roundOffset + VISIBLE_ROUNDS - 1;
+    if (currentRound < visibleStart) {
+      setRoundOffset(Math.max(0, currentRound - 1));
+    } else if (currentRound > visibleEnd) {
+      setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
+    }
+  }, [currentRound, players, pendingMissing, maxRound]);
+
+  const confirmAddPlayer = () => {
+    if (!newPlayerInitials.trim()) return;
     setPlayers((p) => [
       ...p,
-      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), phase: 1, ownerId: ownerIdForNew },
+      { id: crypto.randomUUID(), initials: newPlayerInitials.toUpperCase().slice(0, 3), rounds: Array(maxRound).fill(null), phase: 1, ownerId: ownerIdForNew },
     ]);
+    setNewPlayerInitials("");
+    setAddingPlayer(false);
+  };
+
+  const setAllCurrentRoundToZero = () => {
+    setPlayers((p) =>
+      p.map((x) => {
+        const rounds = [...x.rounds];
+        while (rounds.length <= currentRound) rounds.push(null);
+        if (rounds[currentRound] === null) rounds[currentRound] = 0;
+        return { ...x, rounds };
+      }),
+    );
+  };
 
   const removePlayer = (id: string) =>
     setPlayers((p) => {
@@ -137,17 +202,11 @@ export function Phase10Board({
     );
   };
 
-  const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
-  const canPrev = roundOffset > 0;
-  const goNext = () => {
-    const newOffset = roundOffset + 1;
-    if (newOffset + VISIBLE_ROUNDS > maxRound) setMaxRound(() => newOffset + VISIBLE_ROUNDS);
-    setRoundOffset(newOffset);
-  };
+  const visibleRounds = Array.from(
+    { length: Math.min(VISIBLE_ROUNDS, Math.max(1, maxRound - roundOffset)) },
+    (_, i) => roundOffset + i
+  );
 
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
-  let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
@@ -162,9 +221,9 @@ export function Phase10Board({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">Played {playedHandsCount}</span>
+            <span className="microcap">{playedHandsCount} completed</span>
           </div>
           <span className="microcap">Clear all 10 phases</span>
         </div>
@@ -183,24 +242,9 @@ export function Phase10Board({
           <span className="microcap text-center">Phase</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
-            <button
-              onClick={() => canPrev && setRoundOffset(roundOffset - 1)}
-              disabled={!canPrev}
-              aria-label="Earlier rounds"
-              className="text-ink/40 hover:text-accent disabled:opacity-25 flex justify-center transition-colors"
-            >
-              <ChevronLeft size={15} />
-            </button>
             {visibleRounds.map((r) => (
-              <span key={r} className="microcap text-center">R{r + 1}</span>
+              <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
-            <button
-              onClick={goNext}
-              aria-label="Later rounds"
-              className="text-ink/40 hover:text-accent flex justify-center transition-colors"
-            >
-              <ChevronRight size={15} />
-            </button>
           </div>
           <span />
         </div>
@@ -267,20 +311,28 @@ export function Phase10Board({
                   </span>
                   <div className={roundsGrid}>
                     <span />
-                    {visibleRounds.map((r) => (
-                      <input
-                        key={r}
-                        type="text"
-                        inputMode="numeric"
-                        value={pl.rounds[r] ?? ""}
-                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
-                        onFocus={selectOnFocus}
-                        readOnly={!canEdit(pl)}
-                        placeholder="–"
-                        aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
-                      />
-                    ))}
+                    {visibleRounds.map((r) => {
+                      const isCurrentRound = r === currentRound;
+                      return (
+                        <input
+                          key={r}
+                          ref={isCurrentRound ? inputRef : null}
+                          type="text"
+                          inputMode="numeric"
+                          value={pl.rounds[r] ?? ""}
+                          onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                          onFocus={selectOnFocus}
+                          readOnly={!canEdit(pl)}
+                          placeholder="–"
+                          aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
+                          className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
+                            isCurrentRound
+                              ? "bg-accent text-white border-accent font-semibold shadow-[0_0_0_3px_rgba(255,151,102,0.2)]"
+                              : "bg-paper border-line focus:border-accent"
+                          }`}
+                        />
+                      );
+                    })}
                     <span />
                   </div>
                   <button
@@ -304,17 +356,119 @@ export function Phase10Board({
         )}
       />
 
-      <div className="grid grid-cols-2 gap-2 mt-5">
-        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
-          New round
+      <div className="grid grid-cols-3 gap-2 mt-5">
+        <button
+          onClick={setAllCurrentRoundToZero}
+          className="btn btn-white py-2.5 text-sm"
+          title="Set all players to 0 for this round"
+        >
+          All 0
         </button>
         <button
-          onClick={addPlayer}
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+          className={`btn py-2.5 text-sm ${
+            confirmNewRound
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewRound ? "Confirm?" : "New game"}
+        </button>
+        <button
+          onClick={() => setAddingPlayer(true)}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
-          <Plus size={15} /> Add player
+          <Plus size={15} /> Add
         </button>
       </div>
+
+      {addingPlayer && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Player name</h2>
+            <input
+              type="text"
+              value={newPlayerInitials}
+              onChange={(e) => setNewPlayerInitials(e.target.value.toUpperCase().slice(0, 3))}
+              onKeyDown={(e) => e.key === "Enter" && confirmAddPlayer()}
+              autoFocus
+              placeholder="ABC"
+              maxLength={3}
+              className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 mb-4 transition-colors"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmAddPlayer}
+                disabled={!newPlayerInitials.trim()}
+                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setAddingPlayer(false);
+                  setNewPlayerInitials("");
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMissing && showDialogRef.current && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Record 0 for missing scores?</h2>
+            <p className="text-sm text-ink/60 mb-4">
+              These players haven't entered a score for Round {pendingMissing.round + 1}. Record 0 for them?
+            </p>
+            <div className="border-t border-line mb-4 max-h-40 overflow-y-auto">
+              {players
+                .filter((p) => pendingMissing.playerIds.includes(p.id))
+                .map((p) => (
+                  <div key={p.id} className="py-2 border-b border-line last:border-b-0">
+                    <span className="font-mono font-semibold tracking-[0.15em] text-sm">
+                      {p.initials || "???"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPlayers((p) =>
+                    p.map((x) => {
+                      if (!pendingMissing.playerIds.includes(x.id)) return x;
+                      const rounds = [...x.rounds];
+                      while (rounds.length <= pendingMissing.round) rounds.push(null);
+                      if (rounds[pendingMissing.round] === null) rounds[pendingMissing.round] = 0;
+                      return { ...x, rounds };
+                    }),
+                  );
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                  prevRoundRef.current = currentRound;
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Record 0 & continue
+              </button>
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Calculator
         config={CALC_CONFIGS.phase10!}
