@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, X, Check } from "lucide-react";
+import { Plus, X, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Calculator } from "@/components/Calculator";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { Confetti } from "@/components/Confetti";
@@ -223,9 +223,27 @@ export function Phase10Board({
         {/* Status bar */}
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
-            <span className="microcap">
-              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
-            </span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setRoundOffset((o) => Math.max(0, o - 1))}
+                disabled={roundOffset === 0}
+                aria-label="View previous rounds"
+                className="p-0.5 text-ink/40 hover:text-ink disabled:invisible transition-colors"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <span className="microcap">
+                Round <span className="text-accent font-semibold">{currentRound + 1}</span>
+              </span>
+              <button
+                onClick={() => setRoundOffset((o) => Math.min(Math.max(0, maxRound - VISIBLE_ROUNDS), o + 1))}
+                disabled={roundOffset + VISIBLE_ROUNDS >= maxRound}
+                aria-label="View next rounds"
+                className="p-0.5 text-ink/40 hover:text-ink disabled:invisible transition-colors"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
             <span className="microcap">{playedHandsCount} completed</span>
           </div>
           <span className="microcap">Clear all 10 phases</span>
