@@ -258,6 +258,7 @@ export default function App() {
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
+    if (pin && !isHost) return;
     saveGame({
       sessionId: sessionIdRef.current,
       targetScore,

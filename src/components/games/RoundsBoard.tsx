@@ -44,11 +44,14 @@ export function RoundsBoard({
   const [roundOffset, setRoundOffset] = useState(0);
 
   const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
-  // Standings: best player first in either direction.
-  const sorted = [...players].sort((a, b) => (lowWins ? total(a) - total(b) : total(b) - total(a)));
-  // Both directions end when any total reaches the target; the best-ranked
-  // player at that moment is the winner.
-  const gameOver = players.some((p) => total(p) >= targetScore);
+  // A round only counts toward ranking once every player has scored it.
+  const roundIsComplete = (r: number) => players.every((p) => p.rounds[r] != null);
+  const rankedTotal = (pl: RoundsPlayer) =>
+    pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
+  // Standings: best player first in either direction — frozen until the round is fully scored.
+  const sorted = [...players].sort((a, b) => (lowWins ? rankedTotal(a) - rankedTotal(b) : rankedTotal(b) - rankedTotal(a)));
+  // Both directions end when any ranked total reaches the target.
+  const gameOver = players.some((p) => rankedTotal(p) >= targetScore);
   const winner = sorted.length > 0 && gameOver ? sorted[0] : null;
 
   const savedWinnerRef = useRef<string | null>(null);

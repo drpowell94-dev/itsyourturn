@@ -39,19 +39,24 @@ export function Phase10Board({
   const total = (pl: Phase10Player) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
   const phaseOf = (pl: Phase10Player) => pl.phase ?? 1;
 
-  // Winner: any player with phase > 10. If multiple, lowest total wins.
+  // A round only counts toward ranking once every player has scored it.
+  const roundIsComplete = (r: number) => players.every((p) => p.rounds[r] != null);
+  const rankedTotal = (pl: Phase10Player) =>
+    pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
+
+  // Winner: any player with phase > 10. If multiple, lowest completed-round total wins.
   const finished = players.filter((p) => phaseOf(p) > 10);
   const winner = finished.length > 0
-    ? [...finished].sort((a, b) => total(a) - total(b))[0]
+    ? [...finished].sort((a, b) => rankedTotal(a) - rankedTotal(b))[0]
     : null;
 
-  // Sort: finished first (by lowest score), then by furthest phase, then by lowest score.
+  // Sort: finished first, then by furthest phase, then by lowest completed-round total.
   const sorted = [...players].sort((a, b) => {
     const fa = phaseOf(a) > 10 ? 1 : 0;
     const fb = phaseOf(b) > 10 ? 1 : 0;
     if (fa !== fb) return fb - fa;
     if (phaseOf(a) !== phaseOf(b)) return phaseOf(b) - phaseOf(a);
-    return total(a) - total(b);
+    return rankedTotal(a) - rankedTotal(b);
   });
 
   const savedWinnerRef = useRef<string | null>(null);
