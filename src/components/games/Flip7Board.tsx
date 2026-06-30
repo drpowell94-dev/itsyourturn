@@ -52,11 +52,7 @@ export function Flip7Board({
   const rankedTotal = (pl: Flip7Player) =>
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
   const sorted = [...players].sort((a, b) => rankedTotal(b) - rankedTotal(a));
-  const winner = (() => {
-    const over = players.filter((p) => total(p) >= targetScore);
-    if (over.length === 0) return null;
-    return over.reduce((best, p) => (total(p) > total(best) ? p : best));
-  })();
+  const winner = sorted.length > 0 && rankedTotal(sorted[0]) >= targetScore ? sorted[0] : null;
 
   const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
@@ -310,7 +306,7 @@ export function Flip7Board({
                           value={pl.rounds[r] ?? ""}
                           onChange={(e) => updateScore(pl.id, r, e.target.value)}
                           onFocus={selectOnFocus}
-                          readOnly={!canEdit(pl)}
+                          readOnly={!canEdit(pl) || r > currentRound}
                           placeholder="–"
                           aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)" : ""}`}
                           className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
