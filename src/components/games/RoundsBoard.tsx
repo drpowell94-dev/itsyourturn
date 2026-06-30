@@ -164,18 +164,18 @@ export function RoundsBoard({
   const addScoreToPlayer = (id: string, value: number) => {
     const t = players.find((x) => x.id === id);
     if (t && !canEdit(t)) return;
-    let grewTo = 0;
+    // Always assign to the current round so the calculator can't drop a score
+    // into a future round (the manual inputs are locked the same way).
     setPlayers((p) =>
       p.map((x) => {
         if (x.id !== id) return x;
         const rounds = [...x.rounds];
-        const idx = rounds.findIndex((r) => r === null);
-        if (idx === -1) { rounds.push(value); grewTo = rounds.length; }
-        else { rounds[idx] = value; }
+        while (rounds.length <= currentRound) rounds.push(null);
+        rounds[currentRound] = value;
         return { ...x, rounds };
       }),
     );
-    if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
+    setMaxRound((m) => Math.max(m, currentRound + 1));
   };
 
   const visibleRounds = Array.from(

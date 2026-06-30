@@ -87,6 +87,7 @@ export default function App() {
   const rowStateSent = useRef<Map<string, string>>(new Map());       // JSON of last-pushed state
   const rowOwnerSent = useRef<Map<string, string | null>>(new Map()); // last-pushed owner_id
   const rowSeq = useRef<Map<string, number>>(new Map());             // insertion order
+  const inflightWrite = useRef<Map<string, string>>(new Map());      // updated_at of an in-flight own write
 
   const isHost = Boolean(!pin || (hostId && hostId === deviceId));
 
@@ -123,12 +124,16 @@ export default function App() {
     // player push effect sees "no change" for this player and skips it.
     const applyRow = (row: any) => {
       if (cancelled) return;
-      // Ignore our own echoes and stale updates: anything not strictly newer
-      // than what we already have for this row. Without this, the realtime echo
-      // of a first keystroke ("1") arrives after the user has typed the second
-      // ("15") and clobbers the local row back to "1".
+      // Ignore our own echoes and stale updates. Two cases:
+      //  1. The echo's updated_at is not newer than what we've confirmed locally.
+      //  2. The echo is our own write still in flight — its HTTP response hasn't
+      //     resolved yet (the realtime broadcast can beat it), so rowUpdatedAt is
+      //     still the old token. Match the exact timestamp we sent.
+      // Without this, the echo of a first keystroke ("1") lands after the user
+      // has typed the second ("15") and clobbers the local row back to "1".
       const known = rowUpdatedAt.current.get(row.player_id);
       if (known && row.updated_at <= known) return;
+      if (inflightWrite.current.get(row.player_id) === row.updated_at) return;
       rowUpdatedAt.current.set(row.player_id, row.updated_at);
       rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
       rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
@@ -323,6 +328,11 @@ export default function App() {
         } else if (stateJson !== prevJson || ownerChanged) {
           // Changed player — UPDATE with per-row CAS on updated_at.
           const newUpdatedAt = new Date().toISOString();
+          // Mark the write as in flight so an early realtime echo (which can beat
+          // this HTTP response) is recognized as our own and skipped. We do NOT
+          // touch rowUpdatedAt/rowStateSent here: those stay at their confirmed
+          // values so the CAS token and error-retry still work.
+          inflightWrite.current.set(player.id, newUpdatedAt);
           let q = supabase
             .from("game_players")
             .update({
@@ -334,6 +344,9 @@ export default function App() {
             .eq("player_id", player.id);
           if (existingUpdatedAt) q = q.eq("updated_at", existingUpdatedAt);
           const { data, error } = await q.select("updated_at");
+          if (inflightWrite.current.get(player.id) === newUpdatedAt) {
+            inflightWrite.current.delete(player.id);
+          }
           if (!error && data?.length) {
             rowUpdatedAt.current.set(player.id, newUpdatedAt);
             rowStateSent.current.set(player.id, stateJson);
