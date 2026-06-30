@@ -187,6 +187,9 @@ export function RoundsBoard({
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
   const hasAnyScore = players.some((p) => p.rounds.some((r) => r != null));
+  // Rows render in stable roster order; the leader is flagged by id so the list
+  // never reorders mid-round (which would yank the input out from under a typist).
+  const leaderId = hasAnyScore && sorted.length > 0 ? sorted[0].id : null;
 
   const rowGrid =
     "grid grid-cols-[3.2rem_3.6rem_1fr_2rem] sm:grid-cols-[4.5rem_4.5rem_1fr_2.5rem] gap-2 items-center";
@@ -286,9 +289,9 @@ export function RoundsBoard({
           </div>
         ) : (
           <div>
-            {sorted.map((pl, idx) => {
+            {players.map((pl) => {
               const isWinner = winner?.id === pl.id;
-              const leading = idx === 0 && hasAnyScore;
+              const leading = pl.id === leaderId;
               const atLimit = rankedTotal(pl) >= targetScore;
               return (
                 <div

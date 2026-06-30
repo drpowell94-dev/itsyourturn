@@ -289,7 +289,7 @@ export function Phase10Board({
           </div>
         ) : (
           <div>
-            {sorted.map((pl) => {
+            {players.map((pl) => {
               const ph = phaseOf(pl);
               const done = ph > 10;
               const isWinner = winner?.id === pl.id;

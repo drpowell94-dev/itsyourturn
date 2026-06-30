@@ -53,6 +53,9 @@ export function Flip7Board({
     pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
   const sorted = [...players].sort((a, b) => rankedTotal(b) - rankedTotal(a));
   const winner = sorted.length > 0 && rankedTotal(sorted[0]) >= targetScore ? sorted[0] : null;
+  // Rows render in stable roster order; the leader is flagged by id so the list
+  // never reorders mid-round (which would yank the input out from under a typist).
+  const leaderId = sorted.length > 0 && rankedTotal(sorted[0]) > 0 ? sorted[0].id : null;
 
   const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
@@ -268,9 +271,9 @@ export function Flip7Board({
           </div>
         ) : (
           <div>
-            {sorted.map((pl, idx) => {
+            {players.map((pl) => {
               const isWinner = winner?.id === pl.id;
-              const leading = idx === 0 && rankedTotal(pl) > 0;
+              const leading = pl.id === leaderId;
               return (
                 <div
                   key={pl.id}
