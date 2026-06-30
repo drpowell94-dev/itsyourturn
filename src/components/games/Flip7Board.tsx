@@ -270,7 +270,7 @@ export function Flip7Board({
           <div>
             {sorted.map((pl, idx) => {
               const isWinner = winner?.id === pl.id;
-              const leading = idx === 0 && total(pl) > 0;
+              const leading = idx === 0 && rankedTotal(pl) > 0;
               return (
                 <div
                   key={pl.id}
@@ -292,7 +292,7 @@ export function Flip7Board({
                       leading || isWinner ? "text-accent" : "text-ink"
                     }`}
                   >
-                    {total(pl)}
+                    {rankedTotal(pl)}
                   </span>
                   <div className={roundsGrid}>
                     {visibleRounds.map((r) => {

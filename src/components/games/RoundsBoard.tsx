@@ -289,7 +289,7 @@ export function RoundsBoard({
             {sorted.map((pl, idx) => {
               const isWinner = winner?.id === pl.id;
               const leading = idx === 0 && hasAnyScore;
-              const atLimit = total(pl) >= targetScore;
+              const atLimit = rankedTotal(pl) >= targetScore;
               return (
                 <div
                   key={pl.id}
@@ -311,7 +311,7 @@ export function RoundsBoard({
                       atLimit && lowWins ? "text-coral" : leading || isWinner ? "text-accent" : "text-ink"
                     }`}
                   >
-                    {total(pl)}
+                    {rankedTotal(pl)}
                   </span>
                   <div className={roundsGrid}>
                     {visibleRounds.map((r) => {

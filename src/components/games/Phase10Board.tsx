@@ -339,7 +339,7 @@ export function Phase10Board({
                       isWinner ? "text-accent" : "text-ink"
                     }`}
                   >
-                    {total(pl)}
+                    {rankedTotal(pl)}
                   </span>
                   <div className={roundsGrid}>
                     {visibleRounds.map((r) => {
