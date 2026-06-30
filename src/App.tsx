@@ -123,6 +123,12 @@ export default function App() {
     // player push effect sees "no change" for this player and skips it.
     const applyRow = (row: any) => {
       if (cancelled) return;
+      // Ignore our own echoes and stale updates: anything not strictly newer
+      // than what we already have for this row. Without this, the realtime echo
+      // of a first keystroke ("1") arrives after the user has typed the second
+      // ("15") and clobbers the local row back to "1".
+      const known = rowUpdatedAt.current.get(row.player_id);
+      if (known && row.updated_at <= known) return;
       rowUpdatedAt.current.set(row.player_id, row.updated_at);
       rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
       rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
