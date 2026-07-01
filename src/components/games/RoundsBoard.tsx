@@ -340,14 +340,16 @@ export function RoundsBoard({
                       );
                     })}
                   </div>
-                  <button
-                    onClick={() => removePlayer(pl.id)}
-                    disabled={!canEdit(pl)}
-                    aria-label="Remove player"
-                    className="flex justify-center items-center h-9 text-ink/30 hover:text-coral disabled:opacity-20 transition-colors"
-                  >
-                    <X size={15} />
-                  </button>
+                  {isHost && (
+                    <button
+                      onClick={() => removePlayer(pl.id)}
+                      disabled={!canEdit(pl)}
+                      aria-label="Remove player"
+                      className="flex justify-center items-center h-9 text-ink/30 hover:text-coral disabled:opacity-20 transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
                 </div>
               );
             })}
