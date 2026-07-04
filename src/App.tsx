@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+// Build: force fresh Vercel deployment to clear cache and pick up Supabase migration
 import { saveGame } from "@/lib/history";
 import {
   GAME_DEFAULT_TARGET,
