@@ -13,9 +13,11 @@ export function GameInstructions({ instructions }: Props) {
 }
 
 export function GameInstructionsToggle({
+  instructions: _instructions,
   isOpen,
-  setIsOpen
+  setIsOpen,
 }: {
+  instructions: string;
   isOpen: boolean;
   setIsOpen: (v: boolean) => void;
 }) {

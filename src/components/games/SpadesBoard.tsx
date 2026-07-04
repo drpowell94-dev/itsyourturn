@@ -26,6 +26,7 @@ type Props = {
   setTargetScore: (n: number) => void;
   canEdit: (p: SpadesPlayer) => boolean;
   ownerIdForNew: string | null;
+  isHost: boolean;
   onWinner: (
     winnerInitials: string | null,
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
@@ -53,7 +54,7 @@ function isValidCount(n: number | null | undefined): n is number {
 
 export function SpadesBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  canEdit, ownerIdForNew, isHost, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
   const [confirmNewGame, setConfirmNewGame] = useState(false);
@@ -79,17 +80,9 @@ export function SpadesBoard({
   const sorted = [...players].sort((a, b) => total(b) - total(a));
   const winner = sorted.length > 0 && total(sorted[0]) >= targetScore ? sorted[0] : null;
 
-  const savedWinnerRef = useRef<string | null>(null);
+  const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
-    if (winner && savedWinnerRef.current !== winner.id) {
-      savedWinnerRef.current = winner.id;
-      onWinner(
-        winner.initials || "???",
-        sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
-      );
-    }
-    if (!winner) savedWinnerRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
   const updateInitials = (id: string, v: string) => {
@@ -323,21 +316,41 @@ export function SpadesBoard({
             </span>
             <span className="microcap">{playedRounds.length} completed</span>
           </div>
-          <label className="microcap flex items-center gap-1.5">
-            To
-            <TargetInput
-              value={targetScore}
-              onCommit={setTargetScore}
-              className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-            />
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="microcap flex items-center gap-1.5">
+              To
+              <TargetInput
+                value={targetScore}
+                onCommit={setTargetScore}
+                className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+              />
+            </label>
+          </div>
         </div>
 
         {winner && winner.initials && (
-          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+          <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
             <span className="font-display font-bold text-base">
               🏆 {winner.initials} takes the match at {total(winner)}!
             </span>
+            {isHost && (
+              savedWinnerId === winner.id ? (
+                <span className="microcap text-accent">Saved ✓</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSavedWinnerId(winner.id);
+                    onWinner(
+                      winner.initials || "???",
+                      sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+                    );
+                  }}
+                  className="btn btn-accent px-3 py-1 text-xs shrink-0"
+                >
+                  Save score
+                </button>
+              )
+            )}
           </div>
         )}
 

@@ -5,7 +5,7 @@ import { getHistory, clearHistory, type HistoryGame } from "@/lib/history";
 export type HistoryViewProps = {
   /** Game PIN. When provided, loads per-PIN history from the server.
    *  When omitted, loads global local history. */
-  sessionId?: string | null;
+  pin?: string | null;
   /** Show the clear button (only valid for global local history). */
   showClear?: boolean;
 };
@@ -29,12 +29,12 @@ function fromLocal(g: HistoryGame): Row {
   };
 }
 
-export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) {
+export function HistoryView({ pin, showClear = false }: HistoryViewProps) {
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!sessionId) {
+    if (!pin) {
       setRows(getHistory().map(fromLocal));
       return;
     }
@@ -42,7 +42,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
       const { data } = await supabase
         .from("game_history")
         .select("id, winner, target_score, players, completed_at, game_type")
-        .eq("pin", sessionId)
+        .eq("pin", pin)
         .order("completed_at", { ascending: false });
       if (!cancelled && data) {
         setRows(
@@ -59,10 +59,10 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
     };
     load();
     const channel = supabase
-      .channel(`session-history-${sessionId}`)
+      .channel(`table-history-${pin}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "game_history", filter: `pin=eq.${sessionId}` },
+        { event: "*", schema: "scoring", table: "game_history", filter: `pin=eq.${pin}` },
         () => load(),
       )
       .subscribe();
@@ -70,7 +70,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [pin]);
 
   const onClear = () => {
     if (confirm("Clear all game history?")) {
@@ -91,7 +91,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
 
   return (
     <div>
-      {showClear && !sessionId && (
+      {showClear && !pin && (
         <div className="flex justify-end mb-3">
           <button
             onClick={onClear}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreVertical, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 // Build: force fresh Vercel deployment to clear cache and pick up Supabase migration
@@ -11,6 +11,7 @@ import {
   type CustomRules,
   type GameType,
 } from "@/lib/games";
+import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { GamePicker } from "@/components/GamePicker";
 import { CustomSetup } from "@/components/CustomSetup";
@@ -64,6 +65,8 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const [showPinMenu, setShowPinMenu] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
   const [newPlayerName, setNewPlayerName] = useState("");
   const [joinInput, setJoinInput] = useState("");
   const [pendingType, setPendingType] = useState<GameType | null>(null);
@@ -86,6 +89,7 @@ export default function App() {
   const rowStateSent = useRef<Map<string, string>>(new Map());       // JSON of last-pushed state
   const rowOwnerSent = useRef<Map<string, string | null>>(new Map()); // last-pushed owner_id
   const rowSeq = useRef<Map<string, number>>(new Map());             // insertion order
+  const inflightWrite = useRef<Map<string, string>>(new Map());      // updated_at of an in-flight own write
 
   const isHost = Boolean(!pin || (hostId && hostId === deviceId));
 
@@ -122,6 +126,16 @@ export default function App() {
     // player push effect sees "no change" for this player and skips it.
     const applyRow = (row: any) => {
       if (cancelled) return;
+      // Ignore our own echoes and stale updates. Two cases:
+      //  1. The echo's updated_at is not newer than what we've confirmed locally.
+      //  2. The echo is our own write still in flight — its HTTP response hasn't
+      //     resolved yet (the realtime broadcast can beat it), so rowUpdatedAt is
+      //     still the old token. Match the exact timestamp we sent.
+      // Without this, the echo of a first keystroke ("1") lands after the user
+      // has typed the second ("15") and clobbers the local row back to "1".
+      const known = rowUpdatedAt.current.get(row.player_id);
+      if (known && row.updated_at <= known) return;
+      if (inflightWrite.current.get(row.player_id) === row.updated_at) return;
       rowUpdatedAt.current.set(row.player_id, row.updated_at);
       rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
       rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
@@ -155,7 +169,7 @@ export default function App() {
       .channel(`game-${pin}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "games", filter: `pin=eq.${pin}` },
+        { event: "*", schema: "scoring", table: "games", filter: `pin=eq.${pin}` },
         (payload: any) => applySession(payload.new?.state, payload.new?.updated_at),
       )
       .subscribe();
@@ -165,7 +179,7 @@ export default function App() {
       .channel(`players-${pin}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "INSERT", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
           rowSeq.current.set(payload.new.player_id, payload.new.seq);
           applyRow(payload.new);
@@ -173,12 +187,12 @@ export default function App() {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "UPDATE", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => applyRow(payload.new),
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "DELETE", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
           if (payload.old?.player_id) removeRow(payload.old.player_id);
         },
@@ -316,6 +330,11 @@ export default function App() {
         } else if (stateJson !== prevJson || ownerChanged) {
           // Changed player — UPDATE with per-row CAS on updated_at.
           const newUpdatedAt = new Date().toISOString();
+          // Mark the write as in flight so an early realtime echo (which can beat
+          // this HTTP response) is recognized as our own and skipped. We do NOT
+          // touch rowUpdatedAt/rowStateSent here: those stay at their confirmed
+          // values so the CAS token and error-retry still work.
+          inflightWrite.current.set(player.id, newUpdatedAt);
           let q = supabase
             .from("game_players")
             .update({
@@ -327,6 +346,9 @@ export default function App() {
             .eq("player_id", player.id);
           if (existingUpdatedAt) q = q.eq("updated_at", existingUpdatedAt);
           const { data, error } = await q.select("updated_at");
+          if (inflightWrite.current.get(player.id) === newUpdatedAt) {
+            inflightWrite.current.delete(player.id);
+          }
           if (!error && data?.length) {
             rowUpdatedAt.current.set(player.id, newUpdatedAt);
             rowStateSent.current.set(player.id, stateJson);
@@ -501,9 +523,8 @@ export default function App() {
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
-    if (pin && !isHost) return;
     if (pin && !gameLoadedRef.current) return;
-    if (winnerInitials && winnerSavedRef.current === winnerInitials) return;
+    if (winnerSavedRef.current) return;
     if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
       sessionId,
@@ -559,7 +580,7 @@ export default function App() {
             {pin ? `Tonight · Table ${pin}` : "On this device"}
           </div>
           <h1 className="font-display font-bold text-4xl tracking-tight mb-8">Past games</h1>
-          <HistoryView sessionId={pin ?? undefined} showClear={!pin} />
+          <HistoryView pin={pin ?? undefined} showClear={!pin} />
         </div>
       </div>
     );
@@ -589,8 +610,23 @@ export default function App() {
             <ArrowLeft size={15} /> Back
           </button>
           <div className="microcap mb-1.5">Game setup · <span className="text-accent">{label}</span></div>
-          <h1 className="font-display font-bold text-4xl tracking-tight mb-8">{label}</h1>
-          {pendingType !== "phase10" && (
+          <h1 className="font-display font-bold text-4xl tracking-tight mb-5">{label}</h1>
+          {GAME_INSTRUCTIONS[pendingType] && (
+            <p className="text-sm text-ink/65 leading-relaxed mb-5">{GAME_INSTRUCTIONS[pendingType]}</p>
+          )}
+          {pendingType === "phase10" ? (
+            <div className="card-pop p-5 mb-5">
+              <div className="microcap mb-3">The 10 phases</div>
+              <ul className="space-y-1.5">
+                {["2 sets of 3","1 set of 3 + 1 run of 4","1 set of 4 + 1 run of 4","1 run of 7","1 run of 8","1 run of 9","2 sets of 4","7 cards of one color","1 set of 5 + 1 set of 2","1 set of 5 + 1 set of 3"].map((p, i) => (
+                  <li key={i} className="flex items-baseline gap-2.5 text-sm">
+                    <span className="font-mono font-semibold text-accent w-5 shrink-0 tabular-nums">{i + 1}</span>
+                    <span className="text-ink/75">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
             <div className="card-pop p-5 mb-5">
               <label className="block text-xs font-semibold text-ink/60 mb-3">
                 {pendingType === "hearts" ? "Ends at score" : "Target score"}
@@ -684,26 +720,50 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2">
             {pin && (
-              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
-                <span className="microcap">Table</span>
-                <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
-                  {pin}
-                </span>
-                <button
-                  onClick={copyInvite}
-                  aria-label="Copy invite link"
-                  className="text-ink/40 hover:text-accent transition-colors"
-                >
-                  {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
-                </button>
-                <span className="w-px h-4 bg-line" />
-                <button
-                  onClick={leaveGame}
-                  aria-label="Leave table"
-                  className="text-ink/40 hover:text-coral transition-colors"
-                >
-                  <LogOut size={14} />
-                </button>
+              <div className="relative">
+                <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
+                  <span className="microcap">Table</span>
+                  <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
+                    {pin}
+                  </span>
+                  <button
+                    onClick={() => setShowPinMenu((v) => !v)}
+                    aria-label="Table options"
+                    className="text-ink/40 hover:text-accent transition-colors"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+                {showPinMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowPinMenu(false)} />
+                    <div className="absolute left-0 top-full mt-2 z-40 w-52 bg-surface border-2 border-ink rounded-xl shadow-[0_4px_0_var(--ink)] overflow-hidden fade-in">
+                      <button
+                        onClick={() => { copyInvite(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors text-left"
+                      >
+                        {copied ? <Check size={15} className="text-accent" /> : <Copy size={15} />}
+                        Copy invite
+                      </button>
+                      {gameType && GAME_INSTRUCTIONS[gameType] && (
+                        <button
+                          onClick={() => { setShowHowToPlay(true); setShowPinMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left"
+                        >
+                          <BookOpen size={15} />
+                          How to play
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { leaveGame(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left text-coral"
+                      >
+                        <LogOut size={15} />
+                        Leave table
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
             <button
@@ -756,7 +816,8 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -767,7 +828,8 @@ export default function App() {
             maxRound={maxRound}
             setMaxRound={setMaxRound}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -780,7 +842,8 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
           />
@@ -795,7 +858,8 @@ export default function App() {
             lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
             calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
             onNewGame={handleNewGame}
             gameType={gameType ?? undefined}
@@ -861,6 +925,22 @@ export default function App() {
               className="w-full mt-2.5 text-xs text-ink/50 underline underline-offset-4 decoration-line hover:text-accent hover:decoration-current transition-colors"
             >
               Just watching
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showHowToPlay && gameType && GAME_INSTRUCTIONS[gameType] && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <div className="microcap mb-1">How to play</div>
+            <h2 className="font-display font-bold text-2xl mb-4">{title}</h2>
+            <p className="text-sm text-ink/75 leading-relaxed mb-5">{GAME_INSTRUCTIONS[gameType]}</p>
+            <button
+              onClick={() => setShowHowToPlay(false)}
+              className="btn btn-accent w-full py-2.5 text-sm"
+            >
+              Got it
             </button>
           </div>
         </div>
