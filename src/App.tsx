@@ -169,7 +169,7 @@ export default function App() {
       .channel(`game-${pin}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "scoring", table: "games", filter: `pin=eq.${pin}` },
+        { event: "*", table: "games", filter: `pin=eq.${pin}` },
         (payload: any) => applySession(payload.new?.state, payload.new?.updated_at),
       )
       .subscribe();
@@ -179,7 +179,7 @@ export default function App() {
       .channel(`players-${pin}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "INSERT", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
           rowSeq.current.set(payload.new.player_id, payload.new.seq);
           applyRow(payload.new);
@@ -187,12 +187,12 @@ export default function App() {
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "UPDATE", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => applyRow(payload.new),
       )
       .on(
         "postgres_changes",
-        { event: "DELETE", schema: "scoring", table: "game_players", filter: `pin=eq.${pin}` },
+        { event: "DELETE", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
           if (payload.old?.player_id) removeRow(payload.old.player_id);
         },
