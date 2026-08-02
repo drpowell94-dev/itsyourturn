@@ -71,6 +71,7 @@ export default function App() {
   const [joinInput, setJoinInput] = useState("");
   const [pendingType, setPendingType] = useState<GameType | null>(null);
   const [pendingTarget, setPendingTarget] = useState(200);
+  const [showNewGameDialog, setShowNewGameDialog] = useState(false);
   const deviceId = getDeviceId();
   const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
   const gameLoadedRef = useRef(false);
@@ -511,11 +512,28 @@ export default function App() {
     if (pin) setShowClaim(false);
   };
 
-  const handleNewGame = () => {
+  const handleNewGame = (keepPlayers = false) => {
     setSessionId(crypto.randomUUID());
     winnerSavedRef.current = null;
-    setPlayers([]);
+    if (!keepPlayers) {
+      setPlayers([]);
+    } else {
+      setPlayers(prev => prev.map(p => ({
+        id: p.id,
+        initials: p.initials,
+        rounds: Array(3).fill(null),
+        phase: 1,
+        bids: Array(3).fill(null),
+        tricks: Array(3).fill(null),
+        ownerId: p.ownerId,
+      })));
+    }
     setMaxRound(3);
+    setShowNewGameDialog(false);
+  };
+
+  const handleNewGameClick = () => {
+    setShowNewGameDialog(true);
   };
 
   const handleWinner = useCallback((
@@ -819,7 +837,7 @@ export default function App() {
             ownerIdForNew={pin && !isHost ? deviceId : null}
             isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : gameType === "phase10" ? (
           <Phase10Board
@@ -831,7 +849,7 @@ export default function App() {
             ownerIdForNew={pin && !isHost ? deviceId : null}
             isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : gameType === "spades" ? (
           <SpadesBoard
@@ -845,7 +863,7 @@ export default function App() {
             ownerIdForNew={pin && !isHost ? deviceId : null}
             isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : (
           <RoundsBoard
@@ -861,7 +879,7 @@ export default function App() {
             ownerIdForNew={pin && !isHost ? deviceId : null}
             isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
             gameType={gameType ?? undefined}
           />
         )}
@@ -942,6 +960,35 @@ export default function App() {
             >
               Got it
             </button>
+          </div>
+        </div>
+      )}
+
+      {showNewGameDialog && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Start a new game?</h2>
+            <p className="text-sm text-ink/70 mb-5">Keep the same players and reset their scores?</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleNewGame(true)}
+                className="btn btn-accent w-full py-2.5 text-sm"
+              >
+                Yes, keep players
+              </button>
+              <button
+                onClick={() => handleNewGame(false)}
+                className="btn btn-white w-full py-2.5 text-sm"
+              >
+                No, start fresh
+              </button>
+              <button
+                onClick={() => setShowNewGameDialog(false)}
+                className="btn btn-white w-full py-2.5 text-sm text-ink/50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
