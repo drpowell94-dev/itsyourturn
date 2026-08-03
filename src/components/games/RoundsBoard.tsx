@@ -28,47 +28,108 @@ type Props = {
   calcConfig?: CalcConfig;
   canEdit: (p: RoundsPlayer) => boolean;
   ownerIdForNew: string | null;
+  isHost: boolean;
   onWinner: (
     winnerInitials: string | null,
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => void;
   onNewGame: () => void;
+  gameType?: string;
 };
 
 const VISIBLE_ROUNDS = 3;
 
 export function RoundsBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  lowWins, calcConfig, canEdit, ownerIdForNew, onWinner, onNewGame,
+  lowWins, calcConfig, canEdit, ownerIdForNew, isHost, onWinner, onNewGame, gameType,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [confirmNewRound, setConfirmNewRound] = useState(false);
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const [newPlayerInitials, setNewPlayerInitials] = useState("");
+  const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
+  const prevRoundRef = useRef<number>(-1);
+  const showDialogRef = useRef(false);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Reset round offset when starting a new game (players cleared, maxRound reset to 3)
+  useEffect(() => {
+    if (players.length === 0 && maxRound === 3) {
+      setRoundOffset(0);
+      setConfirmNewRound(false);
+    }
+  }, [players.length, maxRound]);
 
   const total = (pl: RoundsPlayer) => pl.rounds.reduce<number>((acc, r) => acc + (r ?? 0), 0);
-  // Standings: best player first in either direction.
-  const sorted = [...players].sort((a, b) => (lowWins ? total(a) - total(b) : total(b) - total(a)));
-  // Both directions end when any total reaches the target; the best-ranked
-  // player at that moment is the winner.
-  const gameOver = players.some((p) => total(p) >= targetScore);
-  const winner = sorted.length > 0 && gameOver ? sorted[0] : null;
+  // A round only counts toward ranking once every player has scored it.
+  const roundIsComplete = (r: number) => players.length > 0 && players.every((p) => p.rounds[r] != null);
+  const rankedTotal = (pl: RoundsPlayer) =>
+    pl.rounds.reduce<number>((acc, r, i) => acc + (roundIsComplete(i) ? (r ?? 0) : 0), 0);
+  // Standings frozen until the round is fully scored.
+  const sorted = [...players].sort((a, b) => (lowWins ? rankedTotal(a) - rankedTotal(b) : rankedTotal(b) - rankedTotal(a)));
+  const gameOver = players.some((p) => rankedTotal(p) >= targetScore);
+  let winner = null;
+  if (gameOver && sorted.length > 0) {
+    winner = sorted[0];
+  }
 
-  const savedWinnerRef = useRef<string | null>(null);
+  const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
-    if (winner && savedWinnerRef.current !== winner.id) {
-      savedWinnerRef.current = winner.id;
-      onWinner(
-        winner.initials || "???",
-        sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
-      );
-    }
-    if (!winner) savedWinnerRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
-  const addPlayer = () =>
+  // Calculate current round
+  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
+  let currentRound = 0;
+  while (roundIsComplete(currentRound)) currentRound++;
+
+  // Auto-scroll to keep currentRound visible and check for missing scores
+  useEffect(() => {
+    // Blur focused input when moving to next round
+    if (prevRoundRef.current >= 0 && prevRoundRef.current !== currentRound) {
+      if (inputRef.current && inputRef.current === document.activeElement) {
+        inputRef.current.blur();
+      }
+      const prevRound = prevRoundRef.current;
+      const missing = players
+        .filter((p) => p.rounds[prevRound] == null)
+        .map((p) => p.id);
+      if (missing.length > 0) {
+        setPendingMissing({ round: prevRound, playerIds: missing });
+        showDialogRef.current = false;
+      }
+    }
+    prevRoundRef.current = currentRound;
+
+    // Show dialog when first score is entered in new round
+    if (pendingMissing && !showDialogRef.current && handIsPlayed(currentRound)) {
+      showDialogRef.current = true;
+    }
+
+    // Grow maxRound if needed
+    if (currentRound >= maxRound) {
+      setMaxRound((m) => Math.max(m, currentRound + 1));
+    }
+
+    // Auto-scroll to keep current round visible
+    const visibleStart = roundOffset;
+    const visibleEnd = roundOffset + VISIBLE_ROUNDS - 1;
+    if (currentRound < visibleStart) {
+      setRoundOffset(Math.max(0, currentRound - 1));
+    } else if (currentRound > visibleEnd) {
+      setRoundOffset(currentRound - VISIBLE_ROUNDS + 1);
+    }
+  }, [currentRound, players, pendingMissing, maxRound]);
+
+  const confirmAddPlayer = () => {
+    if (!newPlayerInitials.trim()) return;
     setPlayers((p) => [
       ...p,
-      { id: crypto.randomUUID(), initials: "", rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
+      { id: crypto.randomUUID(), initials: newPlayerInitials.toUpperCase().slice(0, 3), rounds: Array(maxRound).fill(null), ownerId: ownerIdForNew },
     ]);
+    setNewPlayerInitials("");
+    setAddingPlayer(false);
+  };
 
   const removePlayer = (id: string) =>
     setPlayers((p) => {
@@ -103,40 +164,36 @@ export function RoundsBoard({
   const addScoreToPlayer = (id: string, value: number) => {
     const t = players.find((x) => x.id === id);
     if (t && !canEdit(t)) return;
-    let grewTo = 0;
+    // Always assign to the current round so the calculator can't drop a score
+    // into a future round (the manual inputs are locked the same way).
     setPlayers((p) =>
       p.map((x) => {
         if (x.id !== id) return x;
         const rounds = [...x.rounds];
-        const idx = rounds.findIndex((r) => r === null);
-        if (idx === -1) { rounds.push(value); grewTo = rounds.length; }
-        else { rounds[idx] = value; }
+        while (rounds.length <= currentRound) rounds.push(null);
+        rounds[currentRound] = value;
         return { ...x, rounds };
       }),
     );
-    if (grewTo > 0) setMaxRound((m) => Math.max(m, grewTo));
+    setMaxRound((m) => Math.max(m, currentRound + 1));
   };
 
-  const visibleRounds = Array.from({ length: VISIBLE_ROUNDS }, (_, i) => roundOffset + i);
-  const canPrev = roundOffset > 0;
-  const goNext = () => {
-    const newOffset = roundOffset + 1;
-    if (newOffset + VISIBLE_ROUNDS > maxRound) setMaxRound(() => newOffset + VISIBLE_ROUNDS);
-    setRoundOffset(newOffset);
-  };
+  const visibleRounds = Array.from(
+    { length: Math.min(VISIBLE_ROUNDS, Math.max(1, maxRound - roundOffset)) },
+    (_, i) => roundOffset + i
+  );
 
-  // "Current hand" = first round where no player has a score yet.
-  const handIsPlayed = (r: number) => players.some((p) => p.rounds[r] != null);
-  let currentRound = 0;
-  while (handIsPlayed(currentRound)) currentRound++;
   let playedHandsCount = 0;
   for (let r = 0; r < maxRound; r++) if (handIsPlayed(r)) playedHandsCount++;
 
   const hasAnyScore = players.some((p) => p.rounds.some((r) => r != null));
+  // Rows render in stable roster order; the leader is flagged by id so the list
+  // never reorders mid-round (which would yank the input out from under a typist).
+  const leaderId = hasAnyScore && sorted.length > 0 ? sorted[0].id : null;
 
   const rowGrid =
     "grid grid-cols-[3.2rem_3.6rem_1fr_2rem] sm:grid-cols-[4.5rem_4.5rem_1fr_2.5rem] gap-2 items-center";
-  const roundsGrid = "grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_1.5rem] gap-1 items-center";
+  const roundsGrid = "grid grid-cols-3 gap-1 items-center";
 
   return (
     <>
@@ -144,29 +201,71 @@ export function RoundsBoard({
         {/* Status bar */}
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
-            <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
-            </span>
-            <span className="microcap">Played {playedHandsCount}</span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => setRoundOffset((o) => Math.max(0, o - 1))}
+                disabled={roundOffset === 0}
+                aria-label="View previous rounds"
+                className="p-0.5 text-ink/40 hover:text-ink disabled:invisible transition-colors"
+              >
+                <ChevronLeft size={13} />
+              </button>
+              <span className="microcap">
+                Round <span className="text-accent font-semibold">{currentRound + 1}</span>
+              </span>
+              <button
+                onClick={() => setRoundOffset((o) => Math.min(Math.max(0, maxRound - VISIBLE_ROUNDS), o + 1))}
+                disabled={roundOffset + VISIBLE_ROUNDS >= maxRound}
+                aria-label="View next rounds"
+                className="p-0.5 text-ink/40 hover:text-ink disabled:invisible transition-colors"
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+            <span className="microcap">{playedHandsCount} completed</span>
           </div>
-          <label className="microcap flex items-center gap-1.5">
-            {lowWins ? "Ends at" : "To"}
-            <TargetInput
-              value={targetScore}
-              onCommit={setTargetScore}
-              maxDigits={5}
-              className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-            />
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="microcap flex items-center gap-1.5">
+              {lowWins ? "Ends at" : "To"}
+              <TargetInput
+                value={targetScore}
+                onCommit={setTargetScore}
+                maxDigits={5}
+                className="w-18 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+              />
+            </label>
+          </div>
         </div>
 
         {winner && winner.initials && (
-          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+          <div className={`flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line ${
+            gameType === "uno" ? "bg-coral/20" : "bg-accent-soft"
+          }`}>
             <span className="font-display font-bold text-base">
-              🏆 {lowWins
-                ? `${winner.initials} wins low with ${total(winner)}!`
-                : `${winner.initials} takes it with ${total(winner)}!`}
+              {gameType === "uno"
+                ? `💔 ${winner.initials} busted at ${total(winner)}!`
+                : lowWins
+                ? `🏆 ${winner.initials} wins low with ${total(winner)}!`
+                : `🏆 ${winner.initials} takes it with ${total(winner)}!`}
             </span>
+            {isHost && (
+              savedWinnerId === winner.id ? (
+                <span className="microcap text-accent">Saved ✓</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSavedWinnerId(winner.id);
+                    onWinner(
+                      winner.initials || "???",
+                      sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+                    );
+                  }}
+                  className="btn btn-accent px-3 py-1 text-xs shrink-0"
+                >
+                  Save score
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -175,24 +274,9 @@ export function RoundsBoard({
           <span className="microcap">Player</span>
           <span className="microcap text-right">Total</span>
           <div className={roundsGrid}>
-            <button
-              onClick={() => canPrev && setRoundOffset(roundOffset - 1)}
-              disabled={!canPrev}
-              aria-label="Earlier rounds"
-              className="text-ink/40 hover:text-accent disabled:opacity-25 flex justify-center transition-colors"
-            >
-              <ChevronLeft size={15} />
-            </button>
             {visibleRounds.map((r) => (
-              <span key={r} className="microcap text-center">R{r + 1}</span>
+              <span key={r} className="microcap text-center font-semibold text-accent">R{r + 1}</span>
             ))}
-            <button
-              onClick={goNext}
-              aria-label="Later rounds"
-              className="text-ink/40 hover:text-accent flex justify-center transition-colors"
-            >
-              <ChevronRight size={15} />
-            </button>
           </div>
           <span />
         </div>
@@ -205,10 +289,10 @@ export function RoundsBoard({
           </div>
         ) : (
           <div>
-            {sorted.map((pl, idx) => {
+            {players.map((pl) => {
               const isWinner = winner?.id === pl.id;
-              const leading = idx === 0 && hasAnyScore;
-              const atLimit = total(pl) >= targetScore;
+              const leading = pl.id === leaderId;
+              const atLimit = rankedTotal(pl) >= targetScore;
               return (
                 <div
                   key={pl.id}
@@ -230,34 +314,42 @@ export function RoundsBoard({
                       atLimit && lowWins ? "text-coral" : leading || isWinner ? "text-accent" : "text-ink"
                     }`}
                   >
-                    {total(pl)}
+                    {rankedTotal(pl)}
                   </span>
                   <div className={roundsGrid}>
-                    <span />
-                    {visibleRounds.map((r) => (
-                      <input
-                        key={r}
-                        type="text"
-                        inputMode="numeric"
-                        value={pl.rounds[r] ?? ""}
-                        onChange={(e) => updateScore(pl.id, r, e.target.value)}
-                        onFocus={selectOnFocus}
-                        readOnly={!canEdit(pl)}
-                        placeholder="–"
-                        aria-label={`Round ${r + 1} score`}
-                        className="w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-1.5 placeholder:text-ink/25 transition-colors"
-                      />
-                    ))}
-                    <span />
+                    {visibleRounds.map((r) => {
+                      const isCurrentRound = r === currentRound;
+                      return (
+                        <input
+                          key={r}
+                          ref={isCurrentRound ? inputRef : null}
+                          type="text"
+                          inputMode="numeric"
+                          value={pl.rounds[r] ?? ""}
+                          onChange={(e) => updateScore(pl.id, r, e.target.value)}
+                          onFocus={selectOnFocus}
+                          readOnly={!canEdit(pl) || r > currentRound}
+                          placeholder="–"
+                          aria-label={`Round ${r + 1} score${isCurrentRound ? " (current)": ""}`}
+                          className={`w-full min-w-0 text-center font-mono tabular-nums text-sm sm:text-base text-ink border-2 rounded-lg outline-none py-1.5 placeholder:text-ink/25 transition-colors ${
+                            isCurrentRound
+                              ? "bg-accent text-white border-accent font-semibold shadow-[0_0_0_3px_rgba(255,151,102,0.2)]"
+                              : "bg-paper border-line focus:border-accent"
+                          }`}
+                        />
+                      );
+                    })}
                   </div>
-                  <button
-                    onClick={() => removePlayer(pl.id)}
-                    disabled={!canEdit(pl)}
-                    aria-label="Remove player"
-                    className="flex justify-center items-center h-9 text-ink/30 hover:text-coral disabled:opacity-20 transition-colors"
-                  >
-                    <X size={15} />
-                  </button>
+                  {isHost && (
+                    <button
+                      onClick={() => removePlayer(pl.id)}
+                      disabled={!canEdit(pl)}
+                      aria-label="Remove player"
+                      className="flex justify-center items-center h-9 text-ink/30 hover:text-coral disabled:opacity-20 transition-colors"
+                    >
+                      <X size={15} />
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -270,20 +362,116 @@ export function RoundsBoard({
           players.map((p) => ({ initials: p.initials, total: total(p) })),
           targetScore,
           lowWins,
+          gameType,
         )}
       />
 
       <div className="grid grid-cols-2 gap-2 mt-5">
-        <button onClick={onNewGame} className="btn btn-white py-2.5 text-sm">
-          New round
+        <button
+          onClick={() => confirmNewRound ? (onNewGame(), setConfirmNewRound(false)) : setConfirmNewRound(true)}
+          className={`btn py-2.5 text-sm ${
+            confirmNewRound
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewRound ? "Confirm?" : "New game"}
         </button>
         <button
-          onClick={addPlayer}
+          onClick={() => setAddingPlayer(true)}
           className="btn btn-accent py-2.5 text-sm flex items-center justify-center gap-1.5"
         >
           <Plus size={15} /> Add player
         </button>
       </div>
+
+      {addingPlayer && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Player name</h2>
+            <input
+              type="text"
+              value={newPlayerInitials}
+              onChange={(e) => setNewPlayerInitials(e.target.value.toUpperCase().slice(0, 3))}
+              onKeyDown={(e) => e.key === "Enter" && confirmAddPlayer()}
+              autoFocus
+              placeholder="ABC"
+              maxLength={3}
+              className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 mb-4 transition-colors"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={confirmAddPlayer}
+                disabled={!newPlayerInitials.trim()}
+                className="btn btn-accent flex-1 py-2.5 text-sm disabled:opacity-40"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => {
+                  setAddingPlayer(false);
+                  setNewPlayerInitials("");
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingMissing && showDialogRef.current && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Record 0 for missing scores?</h2>
+            <p className="text-sm text-ink/60 mb-4">
+              These players haven't entered a score for Round {pendingMissing.round + 1}. Record 0 for them?
+            </p>
+            <div className="border-t border-line mb-4 max-h-40 overflow-y-auto">
+              {players
+                .filter((p) => pendingMissing.playerIds.includes(p.id))
+                .map((p) => (
+                  <div key={p.id} className="py-2 border-b border-line last:border-b-0">
+                    <span className="font-mono font-semibold tracking-[0.15em] text-sm">
+                      {p.initials || "???"}
+                    </span>
+                  </div>
+                ))}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPlayers((p) =>
+                    p.map((x) => {
+                      if (!pendingMissing.playerIds.includes(x.id)) return x;
+                      const rounds = [...x.rounds];
+                      while (rounds.length <= pendingMissing.round) rounds.push(null);
+                      if (rounds[pendingMissing.round] === null) rounds[pendingMissing.round] = 0;
+                      return { ...x, rounds };
+                    }),
+                  );
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                  prevRoundRef.current = currentRound;
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Record 0 & continue
+              </button>
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {calcConfig && (
         <Calculator

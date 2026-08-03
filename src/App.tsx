@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Copy, Check, LogOut, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, Copy, Check, LogOut, Plus, MoreVertical, BookOpen } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+// Build: force fresh Vercel deployment to clear cache and pick up Supabase migration
 import { saveGame } from "@/lib/history";
 import {
   GAME_DEFAULT_TARGET,
@@ -9,9 +11,11 @@ import {
   type CustomRules,
   type GameType,
 } from "@/lib/games";
+import { GAME_INSTRUCTIONS } from "@/lib/instructions";
 import { CALC_CONFIGS } from "@/lib/calculators";
 import { GamePicker } from "@/components/GamePicker";
 import { CustomSetup } from "@/components/CustomSetup";
+import { TargetInput } from "@/components/TargetInput";
 import { HistoryView } from "@/components/HistoryView";
 import { Flip7Board } from "@/components/games/Flip7Board";
 import { Phase10Board } from "@/components/games/Phase10Board";
@@ -38,9 +42,20 @@ function getDeviceId() {
   return id;
 }
 
+// Everything except id and ownerId — what gets stored in game_players.state.
+function playerToRowState(player: Player) {
+  const { id: _id, ownerId: _ownerId, ...state } = player;
+  return state;
+}
+
+// Reconstruct a Player from a game_players row.
+function rowToPlayer(row: any): Player {
+  return { id: row.player_id, ownerId: row.owner_id ?? null, ...row.state };
+}
+
 export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [maxRound, setMaxRound] = useState(3);
+  const [maxRound, setMaxRound] = useState(1);
   const [targetScore, setTargetScore] = useState(200);
   const [pin, setPin] = useState<string | null>(null);
   const [hostId, setHostId] = useState<string | null>(null);
@@ -50,12 +65,34 @@ export default function App() {
   const [showArchive, setShowArchive] = useState(false);
   const [copied, setCopied] = useState(false);
   const [createError, setCreateError] = useState(false);
+  const [showPinMenu, setShowPinMenu] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [joinInput, setJoinInput] = useState("");
+  const [pendingType, setPendingType] = useState<GameType | null>(null);
+  const [pendingTarget, setPendingTarget] = useState(200);
+  const [showNewGameDialog, setShowNewGameDialog] = useState(false);
   const deviceId = getDeviceId();
-  const applyingRemote = useRef(false);
-  const skipNextSave = useRef(true);
-  const lastSyncedAt = useRef<string>("");
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  const gameLoadedRef = useRef(false);
+  const winnerSavedRef = useRef<string | null>(null);
+
+  // Session-level sync state (games table).
   const applyRef = useRef<(s: any, u?: string) => void>(() => {});
-  const sessionIdRef = useRef<string>(crypto.randomUUID());
+  const lastSyncedAt = useRef<string>("");
+  const skipNextSessionSave = useRef(true);
+
+  // Per-player sync state (game_players table).
+  // Each map is keyed by player_id and tracks what we last successfully
+  // pushed to the server. The push effect compares current local state
+  // against these snapshots to find what changed.
+  const rowUpdatedAt = useRef<Map<string, string>>(new Map());       // CAS token per row
+  const rowStateSent = useRef<Map<string, string>>(new Map());       // JSON of last-pushed state
+  const rowOwnerSent = useRef<Map<string, string | null>>(new Map()); // last-pushed owner_id
+  const rowSeq = useRef<Map<string, number>>(new Map());             // insertion order
+  const inflightWrite = useRef<Map<string, string>>(new Map());      // updated_at of an in-flight own write
+
+  const isHost = Boolean(!pin || (hostId && hostId === deviceId));
 
   // Read pin from URL on mount.
   useEffect(() => {
@@ -64,83 +101,171 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Subscribe + initial load when pin changes.
+  // Subscribe to games (session fields) + game_players (per-player rows).
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
-    const apply = (state: any, updatedAt?: string) => {
-      if (!state || cancelled) return;
+    gameLoadedRef.current = false;
+
+    // Apply session-level state from the games row.
+    const applySession = (s: any, updatedAt?: string) => {
+      if (!s || cancelled) return;
       if (updatedAt && lastSyncedAt.current && updatedAt < lastSyncedAt.current) return;
       if (updatedAt) lastSyncedAt.current = updatedAt;
-      applyingRemote.current = true;
-      skipNextSave.current = true;
-      setPlayers(state.players ?? []);
-      setTargetScore(state.targetScore ?? 200);
-      setMaxRound(state.maxRound ?? 3);
-      setHostId(state.hostId ?? null);
-      setCustomRules(state.customRules ?? null);
-      if (isGameType(state.gameType)) setGameType(state.gameType);
-      setTimeout(() => (applyingRemote.current = false), 0);
+      skipNextSessionSave.current = true;
+      setTargetScore(s.targetScore ?? 200);
+      setMaxRound(s.maxRound ?? 3);
+      setHostId(s.hostId ?? null);
+      setCustomRules(s.customRules ?? null);
+      if (isGameType(s.gameType)) setGameType(s.gameType);
+      if (s.sessionId) setSessionId(s.sessionId);
     };
-    applyRef.current = apply;
-    const channel = supabase
+    applyRef.current = applySession;
+
+    // Apply a single incoming player row (INSERT or UPDATE).
+    // We update the tracking refs BEFORE calling setPlayers so that the
+    // player push effect sees "no change" for this player and skips it.
+    const applyRow = (row: any) => {
+      if (cancelled) return;
+      // Ignore our own echoes and stale updates. Two cases:
+      //  1. The echo's updated_at is not newer than what we've confirmed locally.
+      //  2. The echo is our own write still in flight — its HTTP response hasn't
+      //     resolved yet (the realtime broadcast can beat it), so rowUpdatedAt is
+      //     still the old token. Match the exact timestamp we sent.
+      // Without this, the echo of a first keystroke ("1") lands after the user
+      // has typed the second ("15") and clobbers the local row back to "1".
+      const known = rowUpdatedAt.current.get(row.player_id);
+      if (known && row.updated_at <= known) return;
+      if (inflightWrite.current.get(row.player_id) === row.updated_at) return;
+      rowUpdatedAt.current.set(row.player_id, row.updated_at);
+      rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
+      rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
+      if (row.seq) rowSeq.current.set(row.player_id, row.seq);
+      setPlayers(prev => {
+        const idx = prev.findIndex(p => p.id === row.player_id);
+        const player = rowToPlayer(row);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = player;
+          return next;
+        }
+        // New player from another device — insert in seq order.
+        return [...prev, player].sort(
+          (a, b) => (rowSeq.current.get(a.id) ?? 0) - (rowSeq.current.get(b.id) ?? 0),
+        );
+      });
+    };
+
+    const removeRow = (playerId: string) => {
+      if (cancelled) return;
+      rowUpdatedAt.current.delete(playerId);
+      rowStateSent.current.delete(playerId);
+      rowOwnerSent.current.delete(playerId);
+      rowSeq.current.delete(playerId);
+      setPlayers(prev => prev.filter(p => p.id !== playerId));
+    };
+
+    // Subscribe to session-level changes.
+    const gameCh = supabase
       .channel(`game-${pin}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "games", filter: `pin=eq.${pin}` },
+        (payload: any) => applySession(payload.new?.state, payload.new?.updated_at),
+      )
+      .subscribe();
+
+    // Subscribe to per-player row changes.
+    const playerCh = supabase
+      .channel(`players-${pin}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
         (payload: any) => {
-          apply(payload.new?.state, payload.new?.updated_at);
+          rowSeq.current.set(payload.new.player_id, payload.new.seq);
+          applyRow(payload.new);
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        (payload: any) => applyRow(payload.new),
+      )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "game_players", filter: `pin=eq.${pin}` },
+        (payload: any) => {
+          if (payload.old?.player_id) removeRow(payload.old.player_id);
         },
       )
       .subscribe();
-    supabase
-      .from("games")
-      .select("state, updated_at, game_type")
-      .eq("pin", pin)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data?.state) {
-          const s: any = data.state;
-          // Fallback: read game_type from column if missing from state.
-          if (!isGameType(s.gameType) && isGameType((data as any).game_type)) {
-            s.gameType = (data as any).game_type;
-          }
-          apply(s, data.updated_at as string);
-          const host = s.hostId && s.hostId === deviceId;
-          const owns = (s.players ?? []).some((p: any) => p.ownerId === deviceId);
-          if (!host && !owns) setShowClaim(true);
-        }
-      });
+
+    // Initial load — fetch session and player rows in parallel.
+    Promise.all([
+      supabase.from("games").select("state, updated_at, game_type").eq("pin", pin).maybeSingle(),
+      supabase.from("game_players").select("*").eq("pin", pin).order("seq"),
+    ]).then(([{ data: gameData }, { data: playerData }]) => {
+      if (cancelled) return;
+
+      if (gameData?.state) {
+        const s: any = gameData.state;
+        // Fallback: read game_type from the column if missing from state blob.
+        if (!isGameType(s.gameType) && isGameType((gameData as any).game_type))
+          s.gameType = (gameData as any).game_type;
+        applySession(s, gameData.updated_at as string);
+      }
+
+      if (playerData?.length) {
+        playerData.forEach(row => {
+          rowUpdatedAt.current.set(row.player_id, row.updated_at);
+          rowStateSent.current.set(row.player_id, JSON.stringify(row.state));
+          rowOwnerSent.current.set(row.player_id, row.owner_id ?? null);
+          rowSeq.current.set(row.player_id, row.seq);
+        });
+        setPlayers(playerData.map(rowToPlayer));
+      }
+
+      // Prompt guests who haven't claimed a seat yet.
+      const isHostDevice = gameData?.state?.hostId === deviceId;
+      const ownsASeat = (playerData ?? []).some(r => r.owner_id === deviceId);
+      if (!isHostDevice && !ownsASeat) setShowClaim(true);
+
+      gameLoadedRef.current = true;
+    });
+
     return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      gameLoadedRef.current = false;
+      supabase.removeChannel(gameCh);
+      supabase.removeChannel(playerCh);
     };
   }, [pin, deviceId]);
 
-  // Debounced push with optimistic concurrency (CAS on updated_at).
+  // Debounced push for session-level fields → games table.
+  // Player data is no longer in this payload; only targetScore, maxRound, etc.
   useEffect(() => {
     if (!pin || !gameType) return;
-    if (skipNextSave.current) {
-      skipNextSave.current = false;
+    if (skipNextSessionSave.current) {
+      skipNextSessionSave.current = false;
       return;
     }
-    if (applyingRemote.current) return;
     const t = setTimeout(async () => {
       const updated_at = new Date().toISOString();
       const prev = lastSyncedAt.current;
       let q = supabase
         .from("games")
         .update({
-          state: { players, targetScore, maxRound, hostId, gameType, customRules },
+          state: { targetScore, maxRound, hostId, gameType, customRules, sessionId },
           game_type: gameType,
           updated_at,
         })
         .eq("pin", pin);
       if (prev) q = q.eq("updated_at", prev);
       const { data, error } = await q.select("updated_at");
-      if (!error && data && data.length > 0) {
+      if (!error && data?.length) {
         lastSyncedAt.current = updated_at;
       } else if (!error) {
+        // Lost the CAS race — apply the winner's state.
         const { data: latest } = await supabase
           .from("games")
           .select("state, updated_at")
@@ -150,16 +275,141 @@ export default function App() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [players, targetScore, maxRound, pin, hostId, gameType, customRules]);
+  }, [targetScore, maxRound, pin, hostId, gameType, customRules, sessionId]);
+
+  // Debounced push for player data → game_players table (one row per player).
+  // Each device only writes rows it has permission to write.
+  // Since rows are independent, two players editing simultaneously never conflict.
+  useEffect(() => {
+    if (!pin) return;
+    const t = setTimeout(async () => {
+      const currentIds = new Set(players.map(p => p.id));
+
+      // Insertions and updates.
+      for (const player of players) {
+        const canWrite = isHost || player.ownerId === deviceId;
+        if (!canWrite) continue;
+
+        const stateJson = JSON.stringify(playerToRowState(player));
+        const prevJson = rowStateSent.current.get(player.id);
+        const existingUpdatedAt = rowUpdatedAt.current.get(player.id);
+        const ownerChanged = (player.ownerId ?? null) !== (rowOwnerSent.current.get(player.id) ?? null);
+
+        if (existingUpdatedAt === undefined) {
+          // New player — INSERT.
+          const { data, error } = await supabase
+            .from("game_players")
+            .insert({
+              pin,
+              player_id: player.id,
+              owner_id: player.ownerId ?? null,
+              state: playerToRowState(player),
+            })
+            .select("updated_at, seq")
+            .maybeSingle();
+          if (!error && data) {
+            rowUpdatedAt.current.set(player.id, data.updated_at);
+            rowStateSent.current.set(player.id, stateJson);
+            rowOwnerSent.current.set(player.id, player.ownerId ?? null);
+            rowSeq.current.set(player.id, data.seq);
+          } else if ((error as any)?.code === "23505") {
+            // Row already exists (rare race) — fetch and apply remote.
+            const { data: existing } = await supabase
+              .from("game_players")
+              .select("*")
+              .eq("pin", pin)
+              .eq("player_id", player.id)
+              .maybeSingle();
+            if (existing) {
+              rowUpdatedAt.current.set(existing.player_id, existing.updated_at);
+              rowStateSent.current.set(existing.player_id, JSON.stringify(existing.state));
+              rowOwnerSent.current.set(existing.player_id, existing.owner_id ?? null);
+              rowSeq.current.set(existing.player_id, existing.seq);
+              setPlayers(prev => prev.map(p => p.id === player.id ? rowToPlayer(existing) : p));
+            }
+          }
+        } else if (stateJson !== prevJson || ownerChanged) {
+          // Changed player — UPDATE with per-row CAS on updated_at.
+          const newUpdatedAt = new Date().toISOString();
+          // Mark the write as in flight so an early realtime echo (which can beat
+          // this HTTP response) is recognized as our own and skipped. We do NOT
+          // touch rowUpdatedAt/rowStateSent here: those stay at their confirmed
+          // values so the CAS token and error-retry still work.
+          inflightWrite.current.set(player.id, newUpdatedAt);
+          let q = supabase
+            .from("game_players")
+            .update({
+              state: playerToRowState(player),
+              owner_id: player.ownerId ?? null,
+              updated_at: newUpdatedAt,
+            })
+            .eq("pin", pin)
+            .eq("player_id", player.id);
+          if (existingUpdatedAt) q = q.eq("updated_at", existingUpdatedAt);
+          const { data, error } = await q.select("updated_at");
+          if (inflightWrite.current.get(player.id) === newUpdatedAt) {
+            inflightWrite.current.delete(player.id);
+          }
+          if (!error && data?.length) {
+            rowUpdatedAt.current.set(player.id, newUpdatedAt);
+            rowStateSent.current.set(player.id, stateJson);
+            rowOwnerSent.current.set(player.id, player.ownerId ?? null);
+          } else if (!error) {
+            // Lost the CAS race — fetch the winner's row and apply it locally.
+            const { data: latest } = await supabase
+              .from("game_players")
+              .select("*")
+              .eq("pin", pin)
+              .eq("player_id", player.id)
+              .maybeSingle();
+            if (latest) {
+              rowUpdatedAt.current.set(latest.player_id, latest.updated_at);
+              rowStateSent.current.set(latest.player_id, JSON.stringify(latest.state));
+              rowOwnerSent.current.set(latest.player_id, latest.owner_id ?? null);
+              setPlayers(prev =>
+                prev.map(p => p.id === latest.player_id ? rowToPlayer(latest) : p),
+              );
+            }
+          }
+        }
+      }
+
+      // Deletions — rows we were tracking that are no longer in the players array.
+      for (const [pid] of rowUpdatedAt.current) {
+        if (currentIds.has(pid)) continue;
+        const wasOwner = rowOwnerSent.current.get(pid);
+        if (!isHost && wasOwner !== deviceId) continue;
+        await supabase.from("game_players").delete().eq("pin", pin).eq("player_id", pid);
+        rowUpdatedAt.current.delete(pid);
+        rowStateSent.current.delete(pid);
+        rowOwnerSent.current.delete(pid);
+        rowSeq.current.delete(pid);
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [players, pin, isHost, deviceId]);
 
   const handleSelectGameType = (type: GameType) => {
-    setGameType(type);
-    setTargetScore(GAME_DEFAULT_TARGET[type]);
+    if (type === "custom") {
+      setGameType(type);
+      Promise.resolve().then(() => createGame(type, GAME_DEFAULT_TARGET[type]));
+    } else {
+      setPendingType(type);
+      setPendingTarget(GAME_DEFAULT_TARGET[type]);
+    }
   };
 
-  const createGame = async (type: GameType) => {
-    // Custom games keep whatever target the host chose in setup.
-    const initialTarget = type === "custom" ? targetScore : GAME_DEFAULT_TARGET[type];
+  const startGame = (type: GameType, target: number) => {
+    setPendingType(null);
+    setGameType(type);
+    setTargetScore(target);
+    setCreateError(false);
+    Promise.resolve().then(() => createGame(type, target));
+  };
+
+  const createGame = async (type: GameType, target?: number) => {
+    const initialTarget = target ?? targetScore;
+    const newSessionId = crypto.randomUUID();
     for (let attempt = 0; attempt < 5; attempt++) {
       const newPin = Math.floor(1000 + Math.random() * 9000).toString();
       const { data, error } = await supabase
@@ -168,30 +418,35 @@ export default function App() {
           pin: newPin,
           game_type: type,
           state: {
-            players: [],
             targetScore: initialTarget,
             maxRound: 3,
             hostId: deviceId,
             gameType: type,
             customRules,
+            sessionId: newSessionId,
           },
         })
         .select("updated_at")
         .single();
       if (!error) {
-        skipNextSave.current = true;
+        skipNextSessionSave.current = true;
         lastSyncedAt.current = (data?.updated_at as string) || "";
-        sessionIdRef.current = crypto.randomUUID();
+        setSessionId(newSessionId);
         setPlayers([]);
         setTargetScore(initialTarget);
-        setMaxRound(3);
+        setMaxRound(1);
         setHostId(deviceId);
         setGameType(type);
         window.history.replaceState(null, "", `?pin=${newPin}`);
         setPin(newPin);
         return;
       }
+      console.error("createGame error:", error);
       if ((error as any).code !== "23505") break;
+    }
+    if (type !== "custom") {
+      setGameType(null);
+      setPendingType(type);
     }
     setCreateError(true);
   };
@@ -199,6 +454,7 @@ export default function App() {
   const joinGame = (p: string) => {
     window.history.replaceState(null, "", `?pin=${p}`);
     setShowArchive(false);
+    setJoinInput("");
     setPin(p);
   };
 
@@ -209,21 +465,30 @@ export default function App() {
     setGameType(null);
     setCustomRules(null);
     window.history.replaceState(null, "", window.location.pathname);
-    skipNextSave.current = true;
+    skipNextSessionSave.current = true;
+    lastSyncedAt.current = "";
     setPlayers([]);
     setMaxRound(3);
+    rowUpdatedAt.current.clear();
+    rowStateSent.current.clear();
+    rowOwnerSent.current.clear();
+    rowSeq.current.clear();
+    winnerSavedRef.current = null;
+    gameLoadedRef.current = false;
   };
 
   const backToPicker = () => {
+    setPendingType(null);
     setGameType(null);
     setCustomRules(null);
     setPlayers([]);
     setMaxRound(3);
     setTargetScore(200);
-    sessionIdRef.current = crypto.randomUUID();
+    setCreateError(false);
+    setSessionId(crypto.randomUUID());
+    winnerSavedRef.current = null;
   };
 
-  const isHost = Boolean(!pin || (hostId && hostId === deviceId));
   const canEdit = (pl: Player) => !pin || isHost || pl.ownerId === deviceId;
 
   const claimPlayer = (id: string) => {
@@ -232,56 +497,78 @@ export default function App() {
   };
 
   const addPlayerFromClaim = () => {
+    if (!newPlayerName.trim()) return;
     setPlayers((p) => [
       ...p,
       {
         id: crypto.randomUUID(),
-        initials: "",
+        initials: newPlayerName.trim().toUpperCase().slice(0, 3),
         rounds: Array(maxRound).fill(null),
         phase: gameType === "phase10" ? 1 : undefined,
         ownerId: pin ? deviceId : null,
       },
     ]);
+    setNewPlayerName("");
     if (pin) setShowClaim(false);
   };
 
-  const handleNewGame = () => {
-    // Boards persist via onWinner; manual new-game resets just clear local
-    // state (history already includes prior wins).
-    sessionIdRef.current = crypto.randomUUID();
-    setPlayers([]);
+  const handleNewGame = (keepPlayers = false) => {
+    setSessionId(crypto.randomUUID());
+    winnerSavedRef.current = null;
+    if (!keepPlayers) {
+      setPlayers([]);
+    } else {
+      setPlayers(prev => prev.map(p => ({
+        id: p.id,
+        initials: p.initials,
+        rounds: Array(3).fill(null),
+        phase: 1,
+        bids: Array(3).fill(null),
+        tricks: Array(3).fill(null),
+        ownerId: p.ownerId,
+      })));
+    }
     setMaxRound(3);
+    setShowNewGameDialog(false);
   };
 
-  const handleWinner = (
+  const handleNewGameClick = () => {
+    setShowNewGameDialog(true);
+  };
+
+  const handleWinner = useCallback((
     winnerInitials: string | null,
     playersPayload: { initials: string; total: number; rounds: (number | null)[] }[],
   ) => {
     if (!gameType) return;
+    if (pin && !gameLoadedRef.current) return;
+    if (winnerSavedRef.current) return;
+    if (winnerInitials) winnerSavedRef.current = winnerInitials;
     saveGame({
-      sessionId: sessionIdRef.current,
+      sessionId,
       targetScore,
       players: playersPayload,
       winner: winnerInitials,
     });
-    if (pin) {
+    if (pin && isHost) {
+      const completed_at = new Date().toISOString();
       supabase
         .from("game_history")
         .upsert(
           {
             pin,
-            session_id: sessionIdRef.current,
+            session_id: sessionId,
             winner: winnerInitials,
             target_score: targetScore,
             players: playersPayload,
             game_type: gameType,
-            completed_at: new Date().toISOString(),
+            completed_at,
           },
           { onConflict: "pin,session_id" },
         )
         .then(() => {});
     }
-  };
+  }, [gameType, pin, isHost, sessionId, targetScore]);
 
   const copyInvite = async () => {
     try {
@@ -311,20 +598,88 @@ export default function App() {
             {pin ? `Tonight · Table ${pin}` : "On this device"}
           </div>
           <h1 className="font-display font-bold text-4xl tracking-tight mb-8">Past games</h1>
-          <HistoryView sessionId={pin ?? undefined} showClear={!pin} />
+          <HistoryView pin={pin ?? undefined} showClear={!pin} />
         </div>
       </div>
     );
   }
 
   // ── Landing: pick a game ────────────────────────────────────────────
-  if (!pin && !gameType) {
+  if (!pin && !gameType && !pendingType) {
     return (
       <GamePicker
         onSelect={handleSelectGameType}
         onJoin={joinGame}
         onArchive={() => setShowArchive(true)}
       />
+    );
+  }
+
+  // ── Game setup: set target score before starting ────────────────────
+  if (pendingType && !gameType) {
+    const label = GAME_LABELS[pendingType];
+    return (
+      <div className="min-h-screen bg-paper flex justify-center px-5 py-10 sm:py-14">
+        <div className="w-full max-w-sm fade-in">
+          <button
+            onClick={backToPicker}
+            className="flex items-center gap-1.5 text-sm text-ink/60 hover:text-accent transition-colors mb-8"
+          >
+            <ArrowLeft size={15} /> Back
+          </button>
+          <div className="microcap mb-1.5">Game setup · <span className="text-accent">{label}</span></div>
+          <h1 className="font-display font-bold text-4xl tracking-tight mb-5">{label}</h1>
+          {GAME_INSTRUCTIONS[pendingType] && (
+            <p className="text-sm text-ink/65 leading-relaxed mb-5">{GAME_INSTRUCTIONS[pendingType]}</p>
+          )}
+          {pendingType === "phase10" ? (
+            <div className="card-pop p-5 mb-5">
+              <div className="microcap mb-3">The 10 phases</div>
+              <ul className="space-y-1.5">
+                {["2 sets of 3","1 set of 3 + 1 run of 4","1 set of 4 + 1 run of 4","1 run of 7","1 run of 8","1 run of 9","2 sets of 4","7 cards of one color","1 set of 5 + 1 set of 2","1 set of 5 + 1 set of 3"].map((p, i) => (
+                  <li key={i} className="flex items-baseline gap-2.5 text-sm">
+                    <span className="font-mono font-semibold text-accent w-5 shrink-0 tabular-nums">{i + 1}</span>
+                    <span className="text-ink/75">{p}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="card-pop p-5 mb-5">
+              <label className="block text-xs font-semibold text-ink/60 mb-3">
+                {pendingType === "hearts" ? "Ends at score" : "Target score"}
+              </label>
+              <div className="flex items-center gap-3">
+                <TargetInput
+                  value={pendingTarget}
+                  onCommit={setPendingTarget}
+                  maxDigits={5}
+                  label="Target score"
+                  className="w-28 text-center font-mono font-bold text-2xl bg-paper border-2 border-line rounded-xl focus:border-accent outline-none py-2.5 transition-colors"
+                />
+                <span className="text-ink/50 text-sm">
+                  {pendingType === "hearts"
+                    ? "· lowest wins"
+                    : pendingType === "uno"
+                    ? "· first to bust"
+                    : "to win"}
+                </span>
+              </div>
+            </div>
+          )}
+          {createError && (
+            <p className="mb-4 text-sm font-semibold text-coral">
+              Couldn&rsquo;t create a table — check your connection and try again.
+            </p>
+          )}
+          <button
+            onClick={() => startGame(pendingType, pendingTarget)}
+            className="btn btn-accent w-full py-3 text-base flex items-center justify-center gap-2"
+          >
+            Deal me in <ArrowRight size={16} />
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -382,50 +737,87 @@ export default function App() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {pin ? (
-              <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
-                <span className="microcap">Table</span>
-                <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
-                  {pin}
-                </span>
-                <button
-                  onClick={copyInvite}
-                  aria-label="Copy invite link"
-                  className="text-ink/40 hover:text-accent transition-colors"
-                >
-                  {copied ? <Check size={14} className="text-accent" /> : <Copy size={14} />}
-                </button>
-                <span className="w-px h-4 bg-line" />
-                <button
-                  onClick={leaveGame}
-                  aria-label="Leave table"
-                  className="text-ink/40 hover:text-coral transition-colors"
-                >
-                  <LogOut size={14} />
-                </button>
+            {pin && (
+              <div className="relative">
+                <div className="flex items-center gap-2 border-2 border-line bg-surface rounded-xl px-3 py-2">
+                  <span className="microcap">Table</span>
+                  <span className="font-mono font-semibold tracking-[0.2em] text-sm text-accent">
+                    {pin}
+                  </span>
+                  <button
+                    onClick={() => setShowPinMenu((v) => !v)}
+                    aria-label="Table options"
+                    className="text-ink/40 hover:text-accent transition-colors"
+                  >
+                    <MoreVertical size={16} />
+                  </button>
+                </div>
+                {showPinMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowPinMenu(false)} />
+                    <div className="absolute left-0 top-full mt-2 z-40 w-52 bg-surface border-2 border-ink rounded-xl shadow-[0_4px_0_var(--ink)] overflow-hidden fade-in">
+                      <button
+                        onClick={() => { copyInvite(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors text-left"
+                      >
+                        {copied ? <Check size={15} className="text-accent" /> : <Copy size={15} />}
+                        Copy invite
+                      </button>
+                      {gameType && GAME_INSTRUCTIONS[gameType] && (
+                        <button
+                          onClick={() => { setShowHowToPlay(true); setShowPinMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left"
+                        >
+                          <BookOpen size={15} />
+                          How to play
+                        </button>
+                      )}
+                      <button
+                        onClick={() => { leaveGame(); setShowPinMenu(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-paper transition-colors border-t border-line text-left text-coral"
+                      >
+                        <LogOut size={15} />
+                        Leave table
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
-            ) : (
-              <button
-                onClick={() => createGame(gameType!)}
-                className="btn btn-accent px-4 py-2 text-sm"
-              >
-                Host a table
-              </button>
             )}
             <button
               onClick={() => setShowArchive(true)}
               className="btn btn-white px-3.5 py-2 text-sm"
             >
-              Tonight
+              Leaderboard
             </button>
           </div>
         </header>
 
         {!pin && (
-          <p className="-mt-3 mb-6 text-[13px] text-ink/55 leading-relaxed max-w-md">
-            <span className="text-ink/85">Hosting a table</span> creates a shareable 4-digit
-            PIN so everyone can follow the sheet from their own phone.
-          </p>
+          <div className="mb-6 flex items-end gap-2">
+            <div className="flex-1">
+              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
+                Join a table
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="4-digit PIN"
+                maxLength={6}
+                value={joinInput}
+                onChange={(e) => setJoinInput(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={(e) => e.key === "Enter" && joinInput.length >= 4 && joinGame(joinInput)}
+                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2.5 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => joinGame(joinInput)}
+              disabled={joinInput.length < 4}
+              className="btn btn-accent px-4 py-2.5 text-sm disabled:opacity-40 flex items-center gap-1.5"
+            >
+              <ArrowRight size={14} /> Join
+            </button>
+          </div>
         )}
         {createError && (
           <p className="-mt-2 mb-5 text-sm font-semibold text-coral">
@@ -442,9 +834,10 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : gameType === "phase10" ? (
           <Phase10Board
@@ -453,9 +846,10 @@ export default function App() {
             maxRound={maxRound}
             setMaxRound={setMaxRound}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : gameType === "spades" ? (
           <SpadesBoard
@@ -466,9 +860,10 @@ export default function App() {
             targetScore={targetScore}
             setTargetScore={setTargetScore}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
           />
         ) : (
           <RoundsBoard
@@ -481,9 +876,11 @@ export default function App() {
             lowWins={gameType === "hearts" || (gameType === "custom" && !!customRules?.lowWins)}
             calcConfig={CALC_CONFIGS[gameType!]}
             canEdit={canEdit}
-            ownerIdForNew={pin ? deviceId : null}
+            ownerIdForNew={pin && !isHost ? deviceId : null}
+            isHost={isHost}
             onWinner={handleWinner}
-            onNewGame={handleNewGame}
+            onNewGame={handleNewGameClick}
+            gameType={gameType ?? undefined}
           />
         )}
       </div>
@@ -520,11 +917,26 @@ export default function App() {
                 })}
               </div>
             )}
+            <div className="mb-3">
+              <label className="block text-xs font-semibold text-ink/60 mb-1.5">
+                Your name
+              </label>
+              <input
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value.toUpperCase().slice(0, 3))}
+                onKeyDown={(e) => e.key === "Enter" && addPlayerFromClaim()}
+                placeholder="ABC"
+                maxLength={3}
+                aria-label="Enter your name (initials)"
+                className="w-full font-mono font-semibold text-center text-sm bg-paper border-2 border-line rounded-lg focus:border-accent outline-none px-3 py-2 transition-colors"
+              />
+            </div>
             <button
               onClick={addPlayerFromClaim}
-              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5"
+              disabled={!newPlayerName.trim()}
+              className="btn btn-accent w-full py-2.5 text-sm flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
-              <Plus size={15} /> I&rsquo;m new here
+              <Plus size={15} /> Join
             </button>
             <button
               onClick={() => setShowClaim(false)}
@@ -532,6 +944,51 @@ export default function App() {
             >
               Just watching
             </button>
+          </div>
+        </div>
+      )}
+
+      {showHowToPlay && gameType && GAME_INSTRUCTIONS[gameType] && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <div className="microcap mb-1">How to play</div>
+            <h2 className="font-display font-bold text-2xl mb-4">{title}</h2>
+            <p className="text-sm text-ink/75 leading-relaxed mb-5">{GAME_INSTRUCTIONS[gameType]}</p>
+            <button
+              onClick={() => setShowHowToPlay(false)}
+              className="btn btn-accent w-full py-2.5 text-sm"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showNewGameDialog && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Start a new game?</h2>
+            <p className="text-sm text-ink/70 mb-5">Keep the same players and reset their scores?</p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => handleNewGame(true)}
+                className="btn btn-accent w-full py-2.5 text-sm"
+              >
+                Yes, keep players
+              </button>
+              <button
+                onClick={() => handleNewGame(false)}
+                className="btn btn-white w-full py-2.5 text-sm"
+              >
+                No, start fresh
+              </button>
+              <button
+                onClick={() => setShowNewGameDialog(false)}
+                className="btn btn-white w-full py-2.5 text-sm text-ink/50"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

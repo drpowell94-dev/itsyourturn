@@ -5,7 +5,7 @@ import { getHistory, clearHistory, type HistoryGame } from "@/lib/history";
 export type HistoryViewProps = {
   /** Game PIN. When provided, loads per-PIN history from the server.
    *  When omitted, loads global local history. */
-  sessionId?: string | null;
+  pin?: string | null;
   /** Show the clear button (only valid for global local history). */
   showClear?: boolean;
 };
@@ -16,6 +16,7 @@ type Row = {
   winner: string | null;
   targetScore: number;
   players: { initials: string; total: number }[];
+  gameType?: string;
 };
 
 function fromLocal(g: HistoryGame): Row {
@@ -28,20 +29,20 @@ function fromLocal(g: HistoryGame): Row {
   };
 }
 
-export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) {
+export function HistoryView({ pin, showClear = false }: HistoryViewProps) {
   const [rows, setRows] = useState<Row[]>([]);
 
   useEffect(() => {
     let cancelled = false;
-    if (!sessionId) {
+    if (!pin) {
       setRows(getHistory().map(fromLocal));
       return;
     }
     const load = async () => {
       const { data } = await supabase
         .from("game_history")
-        .select("id, winner, target_score, players, completed_at")
-        .eq("pin", sessionId)
+        .select("id, winner, target_score, players, completed_at, game_type")
+        .eq("pin", pin)
         .order("completed_at", { ascending: false });
       if (!cancelled && data) {
         setRows(
@@ -51,16 +52,17 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
             winner: g.winner,
             targetScore: g.target_score,
             players: g.players ?? [],
+            gameType: g.game_type,
           })),
         );
       }
     };
     load();
     const channel = supabase
-      .channel(`session-history-${sessionId}`)
+      .channel(`table-history-${pin}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "game_history", filter: `pin=eq.${sessionId}` },
+        { event: "*", schema: "public", table: "game_history", filter: `pin=eq.${pin}` },
         () => load(),
       )
       .subscribe();
@@ -68,7 +70,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
       cancelled = true;
       supabase.removeChannel(channel);
     };
-  }, [sessionId]);
+  }, [pin]);
 
   const onClear = () => {
     if (confirm("Clear all game history?")) {
@@ -89,7 +91,7 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
 
   return (
     <div>
-      {showClear && !sessionId && (
+      {showClear && !pin && (
         <div className="flex justify-end mb-3">
           <button
             onClick={onClear}
@@ -115,8 +117,8 @@ export function HistoryView({ sessionId, showClear = false }: HistoryViewProps) 
             </div>
             {g.winner && (
               <p className="font-display font-bold text-base mb-2">
-                <span className="mr-1.5">🏆</span>
-                {g.winner} took the game!
+                <span className="mr-1.5">{g.gameType === "uno" ? "💔" : "🏆"}</span>
+                {g.gameType === "uno" ? `${g.winner} busted at ${g.targetScore}!` : `${g.winner} took the game!`}
               </p>
             )}
             <div className="flex flex-wrap gap-x-5 gap-y-1">

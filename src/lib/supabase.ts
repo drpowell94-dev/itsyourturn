@@ -5,9 +5,9 @@ import { createClient } from "@supabase/supabase-js";
 // VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY to point at your own
 // project (see README for the schema).
 const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL || "https://ltjcqjmwasxlnsemgown.supabase.co";
+  import.meta.env.VITE_SUPABASE_URL || "https://nbqnxvdumlkiluueveol.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx0amNxam13YXN4bG5zZW1nb3duIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4OTAwNjQsImV4cCI6MjA5NDQ2NjA2NH0.kcow_RmHQX4pRW5_Fm99RD-pTEXrjjtOX4MxsmCzijo";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5icW54dmR1bWxraWx1dWV2ZW9sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NzcxMjEsImV4cCI6MjA5NzA1MzEyMX0.A60Jp3X4xe5ZWBQB3kNYGOjUiwUXi8o47fPeGlBVQeE";
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);

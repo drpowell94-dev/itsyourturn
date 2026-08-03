@@ -26,6 +26,7 @@ type Props = {
   setTargetScore: (n: number) => void;
   canEdit: (p: SpadesPlayer) => boolean;
   ownerIdForNew: string | null;
+  isHost: boolean;
   onWinner: (
     winnerInitials: string | null,
     playerSnapshot: { initials: string; total: number; rounds: (number | null)[] }[],
@@ -53,9 +54,13 @@ function isValidCount(n: number | null | undefined): n is number {
 
 export function SpadesBoard({
   players, setPlayers, maxRound, setMaxRound, targetScore, setTargetScore,
-  canEdit, ownerIdForNew, onWinner, onNewGame,
+  canEdit, ownerIdForNew, isHost, onWinner, onNewGame,
 }: Props) {
   const [roundOffset, setRoundOffset] = useState(0);
+  const [confirmNewGame, setConfirmNewGame] = useState(false);
+  const [pendingMissing, setPendingMissing] = useState<{ round: number; playerIds: string[] } | null>(null);
+  const prevRoundRef = useRef<number>(-1);
+  const showDialogRef = useRef(false);
 
   // Ensure fixed Team A / Team B exist. Spades is team-based, so we don't
   // allow add/remove. If the session arrives empty (fresh game), seed it.
@@ -75,17 +80,9 @@ export function SpadesBoard({
   const sorted = [...players].sort((a, b) => total(b) - total(a));
   const winner = sorted.length > 0 && total(sorted[0]) >= targetScore ? sorted[0] : null;
 
-  const savedWinnerRef = useRef<string | null>(null);
+  const [savedWinnerId, setSavedWinnerId] = useState<string | null>(null);
   useEffect(() => {
-    if (winner && savedWinnerRef.current !== winner.id) {
-      savedWinnerRef.current = winner.id;
-      onWinner(
-        winner.initials || "???",
-        sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
-      );
-    }
-    if (!winner) savedWinnerRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!winner) setSavedWinnerId(null);
   }, [winner?.id]);
 
   const updateInitials = (id: string, v: string) => {
@@ -186,9 +183,33 @@ export function SpadesBoard({
   // The "current hand" is the first non-finalized round at/after roundOffset.
   let currentRound = roundOffset;
   while (roundIsFinalized(currentRound)) currentRound++;
+  // Check for incomplete rounds and handle missing scores confirmation
   useEffect(() => {
+    if (players.length !== 2) return;
+
+    if (prevRoundRef.current >= 0 && prevRoundRef.current !== currentRound) {
+      const prevRound = prevRoundRef.current;
+      const missing = players
+        .filter((p) => {
+          const bid = p.bids?.[prevRound] ?? null;
+          const tricks = p.tricks?.[prevRound] ?? null;
+          return bid === null || tricks === null;
+        })
+        .map((p) => p.id);
+      if (missing.length > 0) {
+        setPendingMissing({ round: prevRound, playerIds: missing });
+        showDialogRef.current = false;
+      }
+    }
+    prevRoundRef.current = currentRound;
+
+    // Show dialog when first entry is made in new round
+    if (pendingMissing && !showDialogRef.current && roundIsFinalized(currentRound)) {
+      showDialogRef.current = true;
+    }
+
     if (currentRound >= maxRound) setMaxRound(() => currentRound + 1);
-  }, [currentRound, maxRound, setMaxRound]);
+  }, [currentRound, players, pendingMissing, maxRound, setMaxRound]);
 
   const playedRounds = (() => {
     const out: number[] = [];
@@ -291,25 +312,45 @@ export function SpadesBoard({
         <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 border-b border-line">
           <div className="flex items-center gap-4">
             <span className="microcap">
-              Hand <span className="text-accent font-semibold">{currentRound + 1}</span>
+              Round <span className="text-accent font-semibold">{currentRound + 1}</span>
             </span>
-            <span className="microcap">Played {playedRounds.length}</span>
+            <span className="microcap">{playedRounds.length} completed</span>
           </div>
-          <label className="microcap flex items-center gap-1.5">
-            To
-            <TargetInput
-              value={targetScore}
-              onCommit={setTargetScore}
-              className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
-            />
-          </label>
+          <div className="flex items-center gap-3">
+            <label className="microcap flex items-center gap-1.5">
+              To
+              <TargetInput
+                value={targetScore}
+                onCommit={setTargetScore}
+                className="w-14 text-center font-mono font-semibold text-sm text-accent bg-paper border-2 border-line rounded-lg focus:border-accent outline-none py-0.5 transition-colors"
+              />
+            </label>
+          </div>
         </div>
 
         {winner && winner.initials && (
-          <div className="px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
+          <div className="flex items-center justify-between gap-3 px-3 sm:px-4 py-2.5 bg-accent-soft border-b border-line">
             <span className="font-display font-bold text-base">
               🏆 {winner.initials} takes the match at {total(winner)}!
             </span>
+            {isHost && (
+              savedWinnerId === winner.id ? (
+                <span className="microcap text-accent">Saved ✓</span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setSavedWinnerId(winner.id);
+                    onWinner(
+                      winner.initials || "???",
+                      sorted.map((p) => ({ initials: p.initials || "???", total: total(p), rounds: p.rounds })),
+                    );
+                  }}
+                  className="btn btn-accent px-3 py-1 text-xs shrink-0"
+                >
+                  Save score
+                </button>
+              )
+            )}
           </div>
         )}
 
@@ -438,10 +479,49 @@ export function SpadesBoard({
       </section>
 
       <div className="mt-5">
-        <button onClick={onNewGame} className="btn btn-white w-full py-2.5 text-sm">
-          New game
+        <button
+          onClick={() => confirmNewGame ? (onNewGame(), setConfirmNewGame(false)) : setConfirmNewGame(true)}
+          className={`btn w-full py-2.5 text-sm ${
+            confirmNewGame
+              ? "bg-coral text-white border-coral"
+              : "btn-white"
+          }`}
+        >
+          {confirmNewGame ? "Confirm?" : "New game"}
         </button>
       </div>
+
+      {pendingMissing && showDialogRef.current && (
+        <div className="fixed inset-0 z-50 bg-ink/30 backdrop-blur-[2px] flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-surface rounded-2xl border-2 border-ink shadow-[0_4px_0_var(--ink)] p-5 fade-in">
+            <h2 className="font-display font-bold text-2xl mb-4">Record bids and tricks for missing team?</h2>
+            <p className="text-sm text-ink/60 mb-4">
+              {players.find((p) => pendingMissing.playerIds.includes(p.id))?.initials || "A team"} hasn't entered their bid and tricks for Round {pendingMissing.round + 1}. Continue anyway?
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                }}
+                className="btn btn-white flex-1 py-2.5 text-sm"
+              >
+                Continue anyway
+              </button>
+              <button
+                onClick={() => {
+                  setPendingMissing(null);
+                  showDialogRef.current = false;
+                  prevRoundRef.current = -1;
+                }}
+                className="btn btn-accent flex-1 py-2.5 text-sm"
+              >
+                Go back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Confetti active={!!winner} />
     </>
