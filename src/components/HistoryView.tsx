@@ -62,7 +62,7 @@ export function HistoryView({ pin, showClear = false }: HistoryViewProps) {
       .channel(`table-history-${pin}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "scoring", table: "game_history", filter: `pin=eq.${pin}` },
+        { event: "*", schema: "public", table: "game_history", filter: `pin=eq.${pin}` },
         () => load(),
       )
       .subscribe();
